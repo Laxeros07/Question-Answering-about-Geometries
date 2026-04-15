@@ -1,9 +1,9 @@
 <div align="center">
   <a href="https://github.com/Felioxx/SIS-Course">
-    <img src="https://github.com/Felioxx/SIS-Course/blob/main/App/public/images/flavicon.png?raw=true" alt="Logo" width="20%" height="20%">
+    <img src="https://github.com/Laxeros07/Question-Answering-about-Geometries/blob/main/App/public/images/flavicon.png?raw=true" alt="Logo" width="20%" height="20%">
   </a>
-<h3 align="center">Chat with NRW</h3> 
- Ask NRW about its most important geometries!
+<h3 align="center">GeOverview Germany</h3> 
+ Ask Germany about its most important geometries!
   <p align="center">
         <br />
    made <a href="https://www.uni-muenster.de/Geoinformatics/">@ifgi - UNI MUENSTER</a> 🌍

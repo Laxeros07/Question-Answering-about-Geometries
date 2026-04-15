@@ -70,6 +70,7 @@ districts = {"ID":ids_d, "Name": converted_df_d.Name, "Centroid": centroids_d, "
 administrativeDistricts = {"ID":ids_a, "Name": converted_df_a.Name, "Centroid": centroids_a, "Area": areas_a}
 federalStates = {"ID":ids_f, "Name": converted_df_f.Name, "Centroid": centroids_f, "Area": areas_f}
 geometries={"ID":ids_all,"Geometry":converted_df_all}
+geometryTypes = {"ID": ids_all}
 
 df_cities = pd.DataFrame(cities) 
 df_cities.to_csv('Graph_old\Data_Management\\test_new_model\\cities.csv', index=False, sep = ",") 
@@ -81,7 +82,13 @@ df_administrativeDistricts = pd.DataFrame(administrativeDistricts)
 df_administrativeDistricts.to_csv('Graph_old\Data_Management\\test_new_model\\administrativeDistricts.csv', index=False, sep = ",") 
 
 df_federalStates = pd.DataFrame(federalStates)
-df_federalStates.to_csv('Graph_old\Data_Management\\test_new_model\\federalStates.csv', index=False, sep = ",") 
+df_federalStates.to_csv('Graph_old\Data_Management\\test_new_model\\federalStates.csv', index=False, sep = ",")
+
+df_geometries = pd.DataFrame(geometries)
+df_geometries.to_csv('Graph_old\Data_Management\\test_new_model\\geometries.csv')
+
+df_geometries = pd.DataFrame(geometryTypes)
+df_geometries.to_csv('Graph_old\Data_Management\\test_new_model\\geometryTypes.csv')
 
 # Within relation
 c_names = converted_df_c.Name
