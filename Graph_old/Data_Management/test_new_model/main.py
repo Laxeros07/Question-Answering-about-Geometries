@@ -16,7 +16,7 @@ converted_df_a = geopandas_a.to_crs('EPSG:4326')
 converted_df_d = geopandas_d.to_crs('EPSG:4326')
 converted_df_c = geopandas_c.to_crs('EPSG:4326')
 
-#converted_df_all = np.concatenate(converted_df_c, converted_df_d, converted_df_a, converted_df_f))
+converted_df_all = np.concatenate((converted_df_c.geometry, converted_df_d.geometry, converted_df_a.geometry, converted_df_f.geometry))
 
 def createIds(df, prefix):
     names = df.Name
@@ -66,6 +66,7 @@ cities = {"ID":ids_c, "Name": converted_df_c.Name, "Geometry": converted_df_c.ge
 districts = {"ID":ids_d, "Name": converted_df_d.Name, "Geometry": converted_df_d.geometry, "Centroid": centroids_d, "Area": areas_d}
 administrativeDistricts = {"ID":ids_a, "Name": converted_df_a.Name, "Geometry": converted_df_a.geometry, "Centroid": centroids_a, "Area": areas_a}
 federalStates = {"ID":ids_f, "Name": converted_df_f.Name, "Geometry": converted_df_f.geometry, "Centroid": centroids_f, "Area": areas_f}
+geometries={"ID":ids_all,"Geometry":converted_df_all}
 
 df_cities = pd.DataFrame(cities) 
 df_cities.to_csv('Graph_old\Data_Management\\test_new_model\id_cities.csv', index=False, sep = ",") 
