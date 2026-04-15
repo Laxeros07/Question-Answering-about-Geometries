@@ -40,7 +40,7 @@ def createCentroids(df):
 
     centroids = []
     for g in geometry:
-        centroids.append(centroid.calculate_centroid(g))
+        centroids.append(g.centroid)
     return centroids
 
 centroids_c = createCentroids(converted_df_c)
@@ -53,7 +53,10 @@ def createAreas(df):
 
     areas = []
     for g in geometry:
-        areas.append(centroid.calculate_area(g))
+        gdf = gpd.GeoDataFrame({'geometry': [g]}, crs="EPSG:4326")
+        gdf_utm = gdf.to_crs(epsg=25832)
+        area_m2 = gdf_utm['geometry'].area[0]
+        areas.append(round(area_m2 / 1000000, 2))
     return areas
 
 # Area
@@ -62,21 +65,21 @@ areas_d = createAreas(converted_df_d)
 areas_a = createAreas(converted_df_a)
 areas_f = createAreas(converted_df_f)
 
-cities = {"ID":ids_c, "Name": converted_df_c.Name, "Geometry": converted_df_c.geometry, "Centroid": centroids_c, "Area": areas_c}
-districts = {"ID":ids_d, "Name": converted_df_d.Name, "Geometry": converted_df_d.geometry, "Centroid": centroids_d, "Area": areas_d}
-administrativeDistricts = {"ID":ids_a, "Name": converted_df_a.Name, "Geometry": converted_df_a.geometry, "Centroid": centroids_a, "Area": areas_a}
-federalStates = {"ID":ids_f, "Name": converted_df_f.Name, "Geometry": converted_df_f.geometry, "Centroid": centroids_f, "Area": areas_f}
+cities = {"ID":ids_c, "Name": converted_df_c.Name, "Centroid": centroids_c, "Area": areas_c}
+districts = {"ID":ids_d, "Name": converted_df_d.Name, "Centroid": centroids_d, "Area": areas_d}
+administrativeDistricts = {"ID":ids_a, "Name": converted_df_a.Name, "Centroid": centroids_a, "Area": areas_a}
+federalStates = {"ID":ids_f, "Name": converted_df_f.Name, "Centroid": centroids_f, "Area": areas_f}
 geometries={"ID":ids_all,"Geometry":converted_df_all}
 
 df_cities = pd.DataFrame(cities) 
-df_cities.to_csv('Graph_old\Data_Management\\test_new_model\id_cities.csv', index=False, sep = ",") 
+df_cities.to_csv('Graph_old\Data_Management\\test_new_model\\cities.csv', index=False, sep = ",") 
 
 df_districts = pd.DataFrame(districts)
-df_districts.to_csv('Graph_old\Data_Management\\test_new_model\id_districts.csv', index=False, sep = ",") 
+df_districts.to_csv('Graph_old\Data_Management\\test_new_model\\districts.csv', index=False, sep = ",") 
 
 df_administrativeDistricts = pd.DataFrame(administrativeDistricts)
-df_administrativeDistricts.to_csv('Graph_old\Data_Management\\test_new_model\id_administrativeDistricts.csv', index=False, sep = ",") 
+df_administrativeDistricts.to_csv('Graph_old\Data_Management\\test_new_model\\administrativeDistricts.csv', index=False, sep = ",") 
 
 df_federalStates = pd.DataFrame(federalStates)
-df_federalStates.to_csv('Graph_old\Data_Management\\test_new_model\id_federalStates.csv', index=False, sep = ",") 
+df_federalStates.to_csv('Graph_old\Data_Management\\test_new_model\\federalStates.csv', index=False, sep = ",") 
 

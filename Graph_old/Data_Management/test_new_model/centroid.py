@@ -1,27 +1,19 @@
 import geopandas as gpd
 import csv
 import pandas as pd
-from shapely.geometry import LineString, MultiPoint, Polygon
+from shapely.geometry import LineString, MultiPoint, MultiPolygon, Polygon
 
 # Format the geometry to use it as a Polygon
 def format_geometry(geometry):
     #coord_pairs = []
     #coord_pairs.append(geometry.replace("POLYGON ", "").replace("MULTI", "").replace("(","").replace(")","").split(", "))
 
-    coord_pairs = list(geometry.exterior.coords)
-
-    c_centroid = []
-    for pair in coord_pairs:
-        c = pair.split(" ")
-        if(c[0] != "" and c[1] != ""):
-            c_centroid.append((float(c[0]), float(c[1])))
-
-    return c_centroid
+    return geometry
 
 # Calculate the centroid of a geometry
 def calculate_centroid(c_geometry):
     
-    polygon = Polygon(format_geometry(c_geometry))
+    polygon = c_geometry
     return(polygon.centroid)
 
 # Calculate the area of a geometry
