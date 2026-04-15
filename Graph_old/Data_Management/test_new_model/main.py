@@ -83,3 +83,61 @@ df_administrativeDistricts.to_csv('Graph_old\Data_Management\\test_new_model\\ad
 df_federalStates = pd.DataFrame(federalStates)
 df_federalStates.to_csv('Graph_old\Data_Management\\test_new_model\\federalStates.csv', index=False, sep = ",") 
 
+# Within relation
+c_names = converted_df_c.Name
+c_d = converted_df_c["NameD"]
+
+d_names = converted_df_d.Name
+d_ad = converted_df_d["NameAD"]
+
+ad_name = converted_df_a.Name
+ad_f = converted_df_a["NameFS"]
+
+fs_name = converted_df_f.Name
+
+c_lies_in = []
+d_lies_in = []
+lies_in = {"Start_Point": c_lies_in, "End_Point": d_lies_in}
+
+j=0
+for city_id in ids_c:   
+    i=0
+    for district in d_names:    
+        if c_d[j] == district:
+            # print(city_id)
+            # print(c_d[j])
+            # print(d_names[i])
+            lies_in["Start_Point"].append(city_id)
+            lies_in["End_Point"].append(ids_d[i])
+        i = i +1   
+    j= j+1
+
+j=0
+for district_id in ids_d:   
+    i=0
+    for ad_Dis in ad_name:    
+        if d_ad[j] == ad_Dis:
+            # print(city_id)
+            # print(c_d[j])
+            # print(d_names[i])
+            lies_in["Start_Point"].append(district_id)
+            lies_in["End_Point"].append(ids_a[i])
+        i = i +1   
+    j= j+1 
+
+
+j=0
+for adistrict in ids_a:   
+    i=0
+    for federalState in fs_name:    
+        if ad_f[j] == federalState:
+            # print(city_id)
+            # print(c_d[j])
+            # print(d_names[i])
+            lies_in["Start_Point"].append(adistrict)
+            lies_in["End_Point"].append(ids_f[i])
+        i = i +1   
+    j= j+1 
+
+df_lies_in = pd.DataFrame(lies_in) 
+df_lies_in.to_csv('Graph_old\Data_Management\\test_new_model\\within.csv', index=False, sep = ",")
