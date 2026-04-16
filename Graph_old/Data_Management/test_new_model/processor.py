@@ -53,8 +53,9 @@ def process_layers(cities, districts, administrativeDistricts, federalStates, al
     federalStates = {"ID":ids_f, "Name": federalStates.Name, "Centroid": centroids_f, "Area": areas_f, "Geometry": federalStates.geometry}
     geometries={"ID":ids_all,"Geometry": all_geometries}
     geometryTypes = {"ID": ids_all}
+    hasFootprint = {"Start_Point": ids_all, "End_Point": ids_all}
 
-    return cities, districts, administrativeDistricts, federalStates, geometries, geometryTypes
+    return cities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint
 
 def process_within(cities, districts, administrativeDistricts, federalStates):
     # Within relation

@@ -1,7 +1,7 @@
 import pandas as pd
 import csv
 
-def write_layers(cities, districts, administrativeDistricts, federalStates, geometries, geometryTypes):
+def write_layers(cities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint):
     df_cities = pd.DataFrame(cities) 
     df_cities = df_cities.drop(columns=["NameD"])
     df_cities = df_cities.drop(columns=["Geometry"])
@@ -26,6 +26,9 @@ def write_layers(cities, districts, administrativeDistricts, federalStates, geom
 
     df_geometries = pd.DataFrame(geometryTypes)
     df_geometries.to_csv('Graph_old\Data_Management\\test_new_model\\geometryTypes.csv')
+
+    df_hasFootprint = pd.DataFrame(hasFootprint)
+    df_hasFootprint.to_csv('Graph_old\Data_Management\\test_new_model\\hasFootprint.csv')
 
 def write_within(within):
     df_lies_in = pd.DataFrame(within) 
