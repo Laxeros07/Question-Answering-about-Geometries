@@ -1,6 +1,8 @@
 import pandas as pd
 import csv
 
+# Writes the files
+
 def write_layers(cities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint):
     df_cities = pd.DataFrame(cities) 
     df_cities = df_cities.drop(columns=["NameD"])
@@ -35,15 +37,11 @@ def write_within(within):
     df_lies_in.to_csv('Graph_old\Data_Management\\test_new_model\\within.csv', index=False, sep = ",")
 
 def write_touches(touches):
-    #Save the result_array as csv
     with open('Graph_old\Data_Management\\test_new_model\\touches.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["StartID", "EndID", "Rel_Position"])
         writer.writerows(touches)
 
 def write_relates(relates):
-    # Create DataFrame
     df = pd.DataFrame(relates)
-
-    # Speichern der kombinierten CSV-Datei
     df.to_csv('Graph_old\Data_Management\\test_new_model\\relates.csv', index=False)

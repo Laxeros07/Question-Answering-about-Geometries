@@ -3,6 +3,9 @@ import geopandas as gpd
 import pandas as pd
 import math
 
+# Processes the data
+
+# Creates unique IDs for the layers by adding a prefix to the index of the layer.
 def createIds(df, prefix):
     names = df.Name
 
@@ -13,6 +16,7 @@ def createIds(df, prefix):
         i = i+1
     return ID
 
+# Creates the centroids of the geometries in the layers.
 def createCentroids(df):
     geometry = df.geometry
 
@@ -21,6 +25,7 @@ def createCentroids(df):
         centroids.append(g.centroid)
     return centroids
 
+# Calculate the area of a geometry
 def createAreas(df):
     geometry = df.geometry
 
@@ -32,6 +37,7 @@ def createAreas(df):
         areas.append(round(area_m2 / 1000000, 2))
     return areas
 
+# Main process function which calculates all needed attributes for the layers and returns them as dictionaries.
 def process_layers(cities, districts, administrativeDistricts, federalStates, all_geometries):
     ids_c = createIds(cities, "C")
     ids_d = createIds(districts, "D")
@@ -59,78 +65,61 @@ def process_layers(cities, districts, administrativeDistricts, federalStates, al
 
     return cities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint
 
+# Calculates the within relation
 def process_within(cities, districts, administrativeDistricts, federalStates):
     # Within relation
-    c_names = cities["Name"]
     c_d = cities["NameD"]
-
     d_names = districts["Name"]
     d_ad = districts["NameAD"]
-
     ad_name = administrativeDistricts["Name"]
     ad_f = administrativeDistricts["NameFS"]
-
     fs_name = federalStates["Name"]
 
     c_lies_in = []
     d_lies_in = []
+    # Structure of the within.csv
     within = {"Start_Point": c_lies_in, "End_Point": d_lies_in}
 
+    # Calculate the within relation for all layers under the condtion that there already
+    # is an attribute which describes the parent geometry of the layer.
     j=0
     for city_id in cities["ID"]:   
         i=0
         for district in d_names:    
             if c_d[j] == district:
-                # print(city_id)
-                # print(c_d[j])
-                # print(d_names[i])
                 within["Start_Point"].append(city_id)
                 within["End_Point"].append(districts["ID"][i])
             i = i +1   
-        j= j+1
-
+        j = j+1
     j=0
     for district_id in districts["ID"]:   
         i=0
         for ad_Dis in ad_name:    
             if d_ad[j] == ad_Dis:
-                # print(city_id)
-                # print(c_d[j])
-                # print(d_names[i])
                 within["Start_Point"].append(district_id)
                 within["End_Point"].append(administrativeDistricts["ID"][i])
             i = i +1   
-        j= j+1 
-
-
+        j = j+1 
     j=0
     for adistrict in administrativeDistricts["ID"]:   
         i=0
         for federalState in fs_name:    
             if ad_f[j] == federalState:
-                # print(city_id)
-                # print(c_d[j])
-                # print(d_names[i])
                 within["Start_Point"].append(adistrict)
                 within["End_Point"].append(federalStates["ID"][i])
             i = i +1   
-        j= j+1 
+        j = j+1 
 
     return within
-
-def point_to_array(p):
-
-    pointA = [p.x, p.y]  
-    return pointA
 
 # Calculate the realtive postion of two points
 # Source: https://mapscaping.com/how-to-calculate-bearing-between-two-coordinates/
 def calc_bearing(pointA, pointB):
     # Convert latitude and longitude to radians
-    lat1 = math.radians(float(pointA[1]))
-    long1 = math.radians(float(pointA[0]))
-    lat2 = math.radians(float(pointB[1]))
-    long2 = math.radians(float(pointB[0]))
+    lat1 = math.radians(float(pointA.y))
+    long1 = math.radians(float(pointA.x))
+    lat2 = math.radians(float(pointB.y))
+    long2 = math.radians(float(pointB.x))
     
     # Calculate the bearing
     bearing = math.atan2(
@@ -144,8 +133,6 @@ def calc_bearing(pointA, pointB):
     # Make sure the bearing is positive
     bearing = (bearing + 360) % 360
     
-    #return bearing
-    #print(bearing)
     if bearing < 22.5:
         return "northern"
     elif bearing < 67.5:
@@ -165,7 +152,9 @@ def calc_bearing(pointA, pointB):
     else:
         return "northern"
     
-def buildArray(polygons):
+def buildTouchesArray(polygons):
+    polygons = gpd.GeoDataFrame(polygons, geometry="Geometry", crs="EPSG:4326")
+
     neighbors_list = []
     for idx, geom in polygons.geometry.items():
         possible_matches = polygons[polygons.geometry.intersects(geom)]
@@ -207,21 +196,24 @@ def buildArray(polygons):
         i = i+1
 
     return result_array
-    
-def calculate_touches(cities, districts, administrativeDistricts):
 
-    cities_array = buildArray(cities)
-    districts_array = buildArray(districts)
-    administrativeDistricts_array = buildArray(administrativeDistricts)
+# Calculates the touches relation
+def process_touches(cities, districts, administrativeDistricts):
+
+    cities_array = buildTouchesArray(cities)
+    districts_array = buildTouchesArray(districts)
+    administrativeDistricts_array = buildTouchesArray(administrativeDistricts)
 
     return cities_array + districts_array + administrativeDistricts_array
 
+# Calculates the distance between the borders of the geometries
 def calculate_distances(polygons):
     start_point = []
     end_point = []
     distance = []
     rel = []
 
+    # Convert to UTM coordinate system to calculate the distance in meters
     polygons = gpd.GeoDataFrame(polygons, geometry="Geometry", crs="EPSG:4326")
     polygons = polygons.to_crs(epsg=25832)
 
@@ -232,12 +224,11 @@ def calculate_distances(polygons):
             distance.append(polygons.loc[i]["Geometry"].distance(polygons.loc[j]["Geometry"]))
             centroidA = polygons.loc[i]["Centroid"]
             centroidB = polygons.loc[j]["Centroid"]
-            centroidA = point_to_array(centroidA)
-            centroidB = point_to_array(centroidB)
             # Calculate the relation between the two centroids of the polygons
             rel.append(calc_bearing(centroidA, centroidB))
     return start_point, end_point, distance, rel
 
+# Calculates the relates relation
 def process_relates(cities, districts, administrativeDistricts):
     start_point_c, end_point_c, distance_c, rel_c = calculate_distances(cities)
     start_point_d, end_point_d, distance_d, rel_d = calculate_distances(districts)

@@ -3,12 +3,12 @@ import csv
 import pandas as pd
 import centroid
 
-gdf_cities = gpd.read_file("Graph\Data_Management\Shapes\cities.shp")
-df_cities = pd.read_csv("Graph\id_cities.csv")
-gdf_districts = gpd.read_file("Graph\Data_Management\Shapes\districts.shp")
-df_districts = pd.read_csv("Graph\id_districts.csv")
-gdf_administrativeDistricts = gpd.read_file("Graph\Data_Management\Shapes\\administrativeDistricts.shp")
-df_administrativeDistricts = pd.read_csv("Graph\id_administrativeDistricts.csv")
+gdf_cities = gpd.read_file("Graph_old\Data_Management\Shapes_NRW\cities.shp")
+df_cities = pd.read_csv("Graph_old\Data_Management\old_python_scripts_CSVs\id_cities.csv")
+gdf_districts = gpd.read_file("Graph_old\Data_Management\Shapes_NRW\districts.shp")
+df_districts = pd.read_csv("Graph_old\Data_Management\old_python_scripts_CSVs\id_districts.csv")
+gdf_administrativeDistricts = gpd.read_file("Graph_old\Data_Management\Shapes_NRW\\administrativeDistricts.shp")
+df_administrativeDistricts = pd.read_csv("Graph_old\Data_Management\old_python_scripts_CSVs\id_administrativeDistricts.csv")
 
 def buildArray(gdf,df,id_column):
     result_array = []

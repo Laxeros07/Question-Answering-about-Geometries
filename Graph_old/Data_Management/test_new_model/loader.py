@@ -1,6 +1,7 @@
 import geopandas as gpd
 import numpy as np
 
+# Loads the layers 
 def load_layers():
     # Import .shp file into a GeoPandas DataFrame
     geopandas_f = gpd.read_file('Graph_old\Data_Management\Shapes_NRW\\federalStates.shp')
@@ -14,6 +15,7 @@ def load_layers():
     converted_df_d = geopandas_d.to_crs('EPSG:4326')
     converted_df_c = geopandas_c.to_crs('EPSG:4326')
 
+    # Concatenate all dataframes together
     converted_df_all = np.concatenate((converted_df_c.geometry, converted_df_d.geometry, converted_df_a.geometry, converted_df_f.geometry))
 
     return converted_df_c, converted_df_d, converted_df_a, converted_df_f, converted_df_all
