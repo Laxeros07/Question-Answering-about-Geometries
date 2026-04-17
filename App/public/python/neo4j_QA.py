@@ -100,9 +100,9 @@ CYPHER_GENERATION_PROMPT = PromptTemplate(
 )
 
 # Neo4j connection
-url = "neo4j+ssc://f02e0524.databases.neo4j.io:7687"
+url = "neo4j://localhost:7687" #neo4j+ssc://f02e0524.databases.neo4j.io:7687"
 username = "neo4j"
-password = "w60PF-SK2gGIlDII6zZMw8XMo67mqIFSrPU54_E3AU4"
+password = "chatwithgermany" #"w60PF-SK2gGIlDII6zZMw8XMo67mqIFSrPU54_E3AU4"
 
 graph = Neo4jGraph(
     url=url,
