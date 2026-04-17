@@ -5,8 +5,8 @@
       {
         "id": "n:1",
         "position": {
-          "x": 0,
-          "y": 0
+          "x": 34.48757955496383,
+          "y": 3.6950978094604103
         }
       },
       {
@@ -237,6 +237,28 @@
             "$id": "rt:5",
             "token": "within",
             "properties": []
+          },
+          {
+            "$id": "rt:6",
+            "token": "realates",
+            "properties": [
+              {
+                "$id": "p:18",
+                "token": "Distance_between",
+                "type": {
+                  "type": "float"
+                },
+                "nullable": true
+              },
+              {
+                "$id": "p:19",
+                "token": "Spatial_relation",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              }
+            ]
           }
         ],
         "nodeObjectTypes": [
@@ -334,6 +356,18 @@
             "$id": "r:5",
             "type": {
               "$ref": "#rt:5"
+            },
+            "from": {
+              "$ref": "#n:1"
+            },
+            "to": {
+              "$ref": "#n:1"
+            }
+          },
+          {
+            "$id": "r:6",
+            "type": {
+              "$ref": "#rt:6"
             },
             "from": {
               "$ref": "#n:1"
@@ -741,6 +775,40 @@
             ]
           },
           {
+            "name": "relates.csv",
+            "expanded": true,
+            "fields": [
+              {
+                "name": "Start_point",
+                "sample": "A1",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "End_point",
+                "sample": "A1",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "Distance_between",
+                "sample": "0.0",
+                "recommendedType": {
+                  "type": "float"
+                }
+              },
+              {
+                "name": "Spatial_relation",
+                "sample": "northern",
+                "recommendedType": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          {
             "name": "geometries.csv",
             "expanded": true,
             "fields": [
@@ -977,6 +1045,32 @@
           },
           "toMapping": {
             "fieldName": "End_Point"
+          }
+        },
+        {
+          "relationship": {
+            "$ref": "#r:6"
+          },
+          "tableName": "relates.csv",
+          "propertyMappings": [
+            {
+              "fieldName": "Distance_between",
+              "property": {
+                "$ref": "#p:18"
+              }
+            },
+            {
+              "fieldName": "Spatial_relation",
+              "property": {
+                "$ref": "#p:19"
+              }
+            }
+          ],
+          "fromMapping": {
+            "fieldName": "Start_point"
+          },
+          "toMapping": {
+            "fieldName": "End_point"
           }
         }
       ]
