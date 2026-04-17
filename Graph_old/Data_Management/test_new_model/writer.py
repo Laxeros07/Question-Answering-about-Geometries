@@ -34,11 +34,16 @@ def write_within(within):
     df_lies_in = pd.DataFrame(within) 
     df_lies_in.to_csv('Graph_old\Data_Management\\test_new_model\\within.csv', index=False, sep = ",")
 
-def write_touches(cities, districts, administrativeDistricts):
+def write_touches(touches):
     #Save the result_array as csv
-    with open('Graph/touches.csv', 'w', newline='') as file:
+    with open('Graph_old\Data_Management\\test_new_model\\touches.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["StartID", "EndID", "Rel_Position"])
-        writer.writerows(cities)
-        writer.writerows(districts)
-        writer.writerows(administrativeDistricts)
+        writer.writerows(touches)
+
+def write_relates(relates):
+    # Create DataFrame
+    df = pd.DataFrame(relates)
+
+    # Speichern der kombinierten CSV-Datei
+    df.to_csv('Graph_old\Data_Management\\test_new_model\\relates.csv', index=False)
