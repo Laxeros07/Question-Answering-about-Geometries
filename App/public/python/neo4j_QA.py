@@ -26,69 +26,6 @@ Use the following examples for few shot learning.
 Schema:
 {schema}
 
-Cypher examples:
-# In which administrative district lies Siegburg?
-MATCH p=(C:City WHERE C.Name = "Siegburg")-[:within]->(D:District) -[:within]->(A:AdministrativeDistrict) RETURN P, C.Name AS City, D.Name AS District, A.Name AS AdministrativeDistrict
-# Repeat to emphasize:
-MATCH p=(C:City WHERE C.Name = "Siegburg")-[:within]->(D:District) -[:within]->(A:AdministrativeDistrict) RETURN p, C.Name AS City, D.Name AS District, A.Name AS AdministrativeDistrict
-
-# Which cities lie left of Münster?
-MATCH p=(C:City WHERE C.Name = "Münster") -[T:touches WHERE T.`Rel_Position`in ["western","southwestern","northwestern"]]->(:City) RETURN p
-
-# Which districts lie right of Münster?
-MATCH p=(D:District WHERE C.Name = "Münster") 
-        -[T:touches WHERE T.`Rel_Position`in ["eastern","southeastern","northeastern"]]->(:City) RETURN p
-
-# Which cities lie above of Selm?
-MATCH p=(C:City WHERE C.Name = "Selm") 
-        -[T:touches WHERE T.`Rel_Position`in ["southern","southwestern","southeastern"]]->(:City) RETURN p
-
-# Which districts lie eastern of the Hochsauerlandkreis?
-MATCH p=(D:District WHERE D.Name = "Hochsauerlandkreis")
-        -[T:touches WHERE T.`Rel_Position`in ["eastern","southeastern","northeastern"]]->(:District) RETURN p
-
-# Which districts lie southern of the Hochsauerlandkreis?
-MATCH p=(D:District WHERE D.Name = "Hochsauerlandkreis")
-        -[T:touches WHERE T.`Rel_Position`in ["southern","southeastern","southwestern"]]->(:District) RETURN p
-        
-# Which administrative Districts lie beneath Arnsberg?
-MATCH p=(A:AdministrativeDistrict WHERE A.Name = "Arnsberg")
-        -[T:touches WHERE T.`Rel_Position`in ["nothern","northeastern","northwestern"]]->(:AdministrativeDistrict) RETURN p
-
-# Which districts lie next to Köln?
-MATCH p=(D:District WHERE D.Name = "Köln")
-        -[T:touches]->(:District) RETURN p
-
-# How large is Köln?
-MATCH p=(C:City WHERE C.Name = "Köln") RETURN p
-
-# How large is the district Köln?
-MATCH p=(D:District WHERE D.Name = "Köln") RETURN p
-
-# How large is the administrative district Köln?
-MATCH p=(A:AdministrativeDistrict WHERE A.Name = "Köln") RETURN p
-
-# What lies within the district Borken?
-MATCH p=(D:District WHERE D.Name = "Borken")<-[:within]-(C:City) RETURN p
-
-# Where lie Münster and Soest?
-MATCH p=(C:City WHERE C.Name = "Münster" OR C.Name = "Soest") RETURN p
-
-# Show me every city that lies eastern of Bocholt?
-MATCH p=(c1:City WHERE c1.Name = "Bocholt") - [r:relates WHERE r.Rel_Position IN ["eastern","northeastern","southeastern"]] -> (:City) RETURN p
-
-# What is the distance between Bocholt and Telgte?
-MATCH p=(C1:City WHERE C1.Name = "Bocholt") -[R:relates]->(C2:City WHERE C2.Name = "Telgte") RETURN p,R.Distance_Between
-
-# Which Cities lie in the administrative Disctrict Münster?
-MATCH p=(C:City)-[:within]->(D:District)-[:within]->(A:AdministrativeDistrict WHERE A.Name = "Münster") RETURN p
-
-# How does Münster relate to Selm?
-MATCH p=(C1:City WHERE C1.Name = "Münster") -[R:relates]->(C2:City WHERE C2.Name = "Selm") RETURN p
-
-# What's the relative position of Münster an Selm?
-MATCH p=(C1:City WHERE C1.Name = "Münster") -[R:relates]->(C2:City WHERE C2.Name = "Selm") RETURN p
-
 Note: Do not include any explanations or apologies in your responses.
 Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
 Do not include any text except the generated Cypher statement.

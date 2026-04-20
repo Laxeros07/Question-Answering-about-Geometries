@@ -1,46 +1,53 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "visualisation": {
     "nodes": [
       {
         "id": "n:1",
         "position": {
-          "x": 137.59569717579996,
-          "y": 287.7000940948544
+          "x": 34.48757955496383,
+          "y": 3.6950978094604103
         }
       },
       {
         "id": "n:2",
         "position": {
-          "x": 136.6334895032419,
-          "y": 183.57287162047697
+          "x": 89.12786686101506,
+          "y": 134.71561564480766
         }
       },
       {
         "id": "n:3",
         "position": {
-          "x": 134.50028032001688,
-          "y": 69.27895242417898
+          "x": 196.4994717402633,
+          "y": 67.85285077255432
         }
       },
       {
         "id": "n:4",
         "position": {
-          "x": 138.58953038235404,
-          "y": -64.71551236292541
+          "x": 206.13730856788354,
+          "y": -22.986682873056875
+        }
+      },
+      {
+        "id": "n:5",
+        "position": {
+          "x": 166.72094300759466,
+          "y": -125.34700246101995
         }
       }
     ]
   },
   "dataModel": {
-    "version": "2.2.0",
+    "version": "2.3.0",
     "graphSchemaRepresentation": {
       "version": "1.0.0",
       "graphSchema": {
         "nodeLabels": [
           {
             "$id": "nl:1",
-            "token": "City",
+            "token": "Geometry",
             "properties": [
               {
                 "$id": "p:1",
@@ -49,47 +56,15 @@
                   "type": "string"
                 },
                 "nullable": true
-              },
-              {
-                "$id": "p:2",
-                "token": "Name",
-                "type": {
-                  "type": "string"
-                },
-                "nullable": true
-              },
-              {
-                "$id": "p:17",
-                "token": "Centroid",
-                "type": {
-                  "type": "string"
-                },
-                "nullable": true
-              },
-              {
-                "$id": "p:6",
-                "token": "Pop_total",
-                "type": {
-                  "type": "integer"
-                },
-                "nullable": true
-              },
-              {
-                "$id": "p:22",
-                "token": "Area",
-                "type": {
-                  "type": "float"
-                },
-                "nullable": true
               }
             ]
           },
           {
             "$id": "nl:2",
-            "token": "District",
+            "token": "City",
             "properties": [
               {
-                "$id": "p:4",
+                "$id": "p:2",
                 "token": "ID",
                 "type": {
                   "type": "string"
@@ -97,7 +72,7 @@
                 "nullable": true
               },
               {
-                "$id": "p:5",
+                "$id": "p:3",
                 "token": "Name",
                 "type": {
                   "type": "string"
@@ -105,7 +80,7 @@
                 "nullable": true
               },
               {
-                "$id": "p:15",
+                "$id": "p:4",
                 "token": "Centroid",
                 "type": {
                   "type": "string"
@@ -113,15 +88,7 @@
                 "nullable": true
               },
               {
-                "$id": "p:12",
-                "token": "Pop_total",
-                "type": {
-                  "type": "integer"
-                },
-                "nullable": true
-              },
-              {
-                "$id": "p:21",
+                "$id": "p:5",
                 "token": "Area",
                 "type": {
                   "type": "float"
@@ -132,10 +99,10 @@
           },
           {
             "$id": "nl:3",
-            "token": "AdministrativeDistrict",
+            "token": "District",
             "properties": [
               {
-                "$id": "p:7",
+                "$id": "p:6",
                 "token": "ID",
                 "type": {
                   "type": "string"
@@ -143,7 +110,7 @@
                 "nullable": true
               },
               {
-                "$id": "p:8",
+                "$id": "p:7",
                 "token": "Name",
                 "type": {
                   "type": "string"
@@ -151,7 +118,7 @@
                 "nullable": true
               },
               {
-                "$id": "p:13",
+                "$id": "p:8",
                 "token": "Centroid",
                 "type": {
                   "type": "string"
@@ -159,15 +126,7 @@
                 "nullable": true
               },
               {
-                "$id": "p:19",
-                "token": "Pop_total",
-                "type": {
-                  "type": "integer"
-                },
-                "nullable": true
-              },
-              {
-                "$id": "p:20",
+                "$id": "p:9",
                 "token": "Area",
                 "type": {
                   "type": "float"
@@ -178,7 +137,7 @@
           },
           {
             "$id": "nl:4",
-            "token": "FederalState",
+            "token": "AdministrativeDistrict",
             "properties": [
               {
                 "$id": "p:10",
@@ -197,15 +156,53 @@
                 "nullable": true
               },
               {
-                "$id": "p:9",
-                "token": "Pop_total",
+                "$id": "p:12",
+                "token": "Centroid",
                 "type": {
-                  "type": "integer"
+                  "type": "string"
                 },
                 "nullable": true
               },
               {
-                "$id": "p:3",
+                "$id": "p:13",
+                "token": "Area",
+                "type": {
+                  "type": "float"
+                },
+                "nullable": true
+              }
+            ]
+          },
+          {
+            "$id": "nl:5",
+            "token": "FederalState",
+            "properties": [
+              {
+                "$id": "p:14",
+                "token": "ID",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              {
+                "$id": "p:15",
+                "token": "Name",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              {
+                "$id": "p:16",
+                "token": "Centroid",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              {
+                "$id": "p:17",
                 "token": "Area",
                 "type": {
                   "type": "float"
@@ -218,49 +215,44 @@
         "relationshipTypes": [
           {
             "$id": "rt:1",
-            "token": "touches",
-            "properties": [
-              {
-                "$id": "p:18",
-                "token": "Rel_Position",
-                "type": {
-                  "type": "string"
-                },
-                "nullable": true
-              }
-            ]
+            "token": "hasFootprint",
+            "properties": []
           },
           {
             "$id": "rt:2",
-            "token": "within",
+            "token": "hasFootprint",
             "properties": []
           },
           {
             "$id": "rt:3",
-            "token": "within",
+            "token": "hasFootprint",
             "properties": []
           },
           {
             "$id": "rt:4",
-            "token": "touches",
-            "properties": [
-              {
-                "$id": "p:14",
-                "token": "Rel_Position",
-                "type": {
-                  "type": "string"
-                },
-                "nullable": true
-              }
-            ]
+            "token": "hasFootprint",
+            "properties": []
           },
           {
             "$id": "rt:5",
-            "token": "touches",
+            "token": "within",
+            "properties": []
+          },
+          {
+            "$id": "rt:6",
+            "token": "relates",
             "properties": [
               {
-                "$id": "p:16",
-                "token": "Rel_Position",
+                "$id": "p:18",
+                "token": "Distance_between",
+                "type": {
+                  "type": "float"
+                },
+                "nullable": true
+              },
+              {
+                "$id": "p:19",
+                "token": "Spatial_relation",
                 "type": {
                   "type": "string"
                 },
@@ -269,9 +261,18 @@
             ]
           },
           {
-            "$id": "rt:6",
-            "token": "within",
-            "properties": []
+            "$id": "rt:7",
+            "token": "touches",
+            "properties": [
+              {
+                "$id": "p:20",
+                "token": "Property 1",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              }
+            ]
           }
         ],
         "nodeObjectTypes": [
@@ -306,6 +307,14 @@
                 "$ref": "#nl:4"
               }
             ]
+          },
+          {
+            "$id": "n:5",
+            "labels": [
+              {
+                "$ref": "#nl:5"
+              }
+            ]
           }
         ],
         "relationshipObjectTypes": [
@@ -315,7 +324,7 @@
               "$ref": "#rt:1"
             },
             "from": {
-              "$ref": "#n:1"
+              "$ref": "#n:2"
             },
             "to": {
               "$ref": "#n:1"
@@ -327,10 +336,10 @@
               "$ref": "#rt:2"
             },
             "from": {
-              "$ref": "#n:1"
+              "$ref": "#n:3"
             },
             "to": {
-              "$ref": "#n:2"
+              "$ref": "#n:1"
             }
           },
           {
@@ -339,10 +348,10 @@
               "$ref": "#rt:3"
             },
             "from": {
-              "$ref": "#n:2"
+              "$ref": "#n:4"
             },
             "to": {
-              "$ref": "#n:3"
+              "$ref": "#n:1"
             }
           },
           {
@@ -351,10 +360,10 @@
               "$ref": "#rt:4"
             },
             "from": {
-              "$ref": "#n:3"
+              "$ref": "#n:5"
             },
             "to": {
-              "$ref": "#n:3"
+              "$ref": "#n:1"
             }
           },
           {
@@ -363,10 +372,10 @@
               "$ref": "#rt:5"
             },
             "from": {
-              "$ref": "#n:2"
+              "$ref": "#n:1"
             },
             "to": {
-              "$ref": "#n:2"
+              "$ref": "#n:1"
             }
           },
           {
@@ -375,45 +384,29 @@
               "$ref": "#rt:6"
             },
             "from": {
-              "$ref": "#n:3"
+              "$ref": "#n:1"
             },
             "to": {
-              "$ref": "#n:4"
+              "$ref": "#n:1"
+            }
+          },
+          {
+            "$id": "r:7",
+            "type": {
+              "$ref": "#rt:7"
+            },
+            "from": {
+              "$ref": "#n:1"
+            },
+            "to": {
+              "$ref": "#n:1"
             }
           }
         ],
         "constraints": [
           {
-            "$id": "c:4",
-            "name": "ID_FederalState_uniq",
-            "constraintType": "uniqueness",
-            "entityType": "node",
-            "nodeLabel": {
-              "$ref": "#nl:4"
-            },
-            "properties": [
-              {
-                "$ref": "#p:10"
-              }
-            ]
-          },
-          {
-            "$id": "c:3",
-            "name": "ID_AdministrativeDistrict_uniq",
-            "constraintType": "uniqueness",
-            "entityType": "node",
-            "nodeLabel": {
-              "$ref": "#nl:3"
-            },
-            "properties": [
-              {
-                "$ref": "#p:7"
-              }
-            ]
-          },
-          {
             "$id": "c:2",
-            "name": "ID_District_uniq",
+            "name": "ID_City_uniq",
             "constraintType": "uniqueness",
             "entityType": "node",
             "nodeLabel": {
@@ -421,13 +414,13 @@
             },
             "properties": [
               {
-                "$ref": "#p:4"
+                "$ref": "#p:2"
               }
             ]
           },
           {
             "$id": "c:1",
-            "name": "ID_City_uniq",
+            "name": "ID_Geometry_uniq",
             "constraintType": "uniqueness",
             "entityType": "node",
             "nodeLabel": {
@@ -438,12 +431,54 @@
                 "$ref": "#p:1"
               }
             ]
+          },
+          {
+            "$id": "c:3",
+            "name": "ID_District_uniq",
+            "constraintType": "uniqueness",
+            "entityType": "node",
+            "nodeLabel": {
+              "$ref": "#nl:3"
+            },
+            "properties": [
+              {
+                "$ref": "#p:6"
+              }
+            ]
+          },
+          {
+            "$id": "c:5",
+            "name": "ID_FederalState_uniq",
+            "constraintType": "uniqueness",
+            "entityType": "node",
+            "nodeLabel": {
+              "$ref": "#nl:5"
+            },
+            "properties": [
+              {
+                "$ref": "#p:14"
+              }
+            ]
+          },
+          {
+            "$id": "c:4",
+            "name": "ID_AdministrativeDistrict_uniq",
+            "constraintType": "uniqueness",
+            "entityType": "node",
+            "nodeLabel": {
+              "$ref": "#nl:4"
+            },
+            "properties": [
+              {
+                "$ref": "#p:10"
+              }
+            ]
           }
         ],
         "indexes": [
           {
             "$id": "i:1",
-            "name": "ID_City_uniq",
+            "name": "ID_Geometry_uniq",
             "indexType": "default",
             "entityType": "node",
             "nodeLabel": {
@@ -457,7 +492,7 @@
           },
           {
             "$id": "i:2",
-            "name": "ID_District_uniq",
+            "name": "ID_City_uniq",
             "indexType": "default",
             "entityType": "node",
             "nodeLabel": {
@@ -465,13 +500,13 @@
             },
             "properties": [
               {
-                "$ref": "#p:4"
+                "$ref": "#p:2"
               }
             ]
           },
           {
             "$id": "i:3",
-            "name": "ID_AdministrativeDistrict_uniq",
+            "name": "ID_District_uniq",
             "indexType": "default",
             "entityType": "node",
             "nodeLabel": {
@@ -479,13 +514,13 @@
             },
             "properties": [
               {
-                "$ref": "#p:7"
+                "$ref": "#p:6"
               }
             ]
           },
           {
             "$id": "i:4",
-            "name": "ID_FederalState_uniq",
+            "name": "ID_AdministrativeDistrict_uniq",
             "indexType": "default",
             "entityType": "node",
             "nodeLabel": {
@@ -494,6 +529,20 @@
             "properties": [
               {
                 "$ref": "#p:10"
+              }
+            ]
+          },
+          {
+            "$id": "i:5",
+            "name": "ID_FederalState_uniq",
+            "indexType": "default",
+            "entityType": "node",
+            "nodeLabel": {
+              "$ref": "#nl:5"
+            },
+            "properties": [
+              {
+                "$ref": "#p:14"
               }
             ]
           }
@@ -515,7 +564,7 @@
             "$ref": "#n:2"
           },
           "keyProperty": {
-            "$ref": "#p:4"
+            "$ref": "#p:2"
           }
         },
         {
@@ -523,7 +572,7 @@
             "$ref": "#n:3"
           },
           "keyProperty": {
-            "$ref": "#p:7"
+            "$ref": "#p:6"
           }
         },
         {
@@ -533,6 +582,14 @@
           "keyProperty": {
             "$ref": "#p:10"
           }
+        },
+        {
+          "node": {
+            "$ref": "#n:5"
+          },
+          "keyProperty": {
+            "$ref": "#p:14"
+          }
         }
       ]
     },
@@ -541,164 +598,185 @@
         "type": "local",
         "tableSchemas": [
           {
-            "name": "id_administrativeDistricts_pop.csv",
+            "name": "administrativeDistricts.csv",
             "expanded": true,
             "fields": [
               {
                 "name": "ID",
-                "type": "string",
                 "sample": "A1",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Name",
-                "type": "string",
                 "sample": "Arnsberg",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Centroid",
-                "type": "string",
                 "sample": "POINT (8.005532441655175 51.316107759729995)",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Area",
-                "type": "float",
                 "sample": "8007.07",
-                "include": true
-              },
-              {
-                "name": "Pop_total",
-                "type": "integer",
-                "sample": "3602426",
-                "include": true
+                "recommendedType": {
+                  "type": "float"
+                }
               }
             ]
           },
           {
-            "name": "id_cities_pop.csv",
+            "name": "cities.csv",
             "expanded": true,
             "fields": [
               {
                 "name": "ID",
-                "type": "string",
                 "sample": "C1",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Name",
-                "type": "string",
                 "sample": "Brilon",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Centroid",
-                "type": "string",
                 "sample": "POINT (8.603999826038203 51.4080887876535)",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Area",
-                "type": "float",
                 "sample": "228.95",
-                "include": true
-              },
-              {
-                "name": "Pop_total",
-                "type": "integer",
-                "sample": "25575",
-                "include": true
+                "recommendedType": {
+                  "type": "float"
+                }
               }
             ]
           },
           {
-            "name": "id_districts_pop.csv",
+            "name": "districts.csv",
             "expanded": true,
             "fields": [
               {
                 "name": "ID",
-                "type": "string",
                 "sample": "D1",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Name",
-                "type": "string",
                 "sample": "Hochsauerlandkreis",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Centroid",
-                "type": "string",
                 "sample": "POINT (8.384858204548713 51.30692468508486)",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Area",
-                "type": "float",
                 "sample": "1958.61",
-                "include": true
-              },
-              {
-                "name": "Pop_total",
-                "type": "float",
-                "sample": "130884.0",
-                "include": true
+                "recommendedType": {
+                  "type": "float"
+                }
               }
             ]
           },
           {
-            "name": "id_federalStates_pop.csv",
+            "name": "federalStates.csv",
             "expanded": true,
             "fields": [
               {
                 "name": "ID",
-                "type": "string",
                 "sample": "F1",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Name",
-                "type": "string",
                 "sample": "Nordrhein-Westfalen",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "Centroid",
+                "sample": "POINT (7.562168072871504 51.47979008738761)",
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "Area",
-                "type": "float",
-                "sample": "34112.38",
-                "include": true
-              },
-              {
-                "name": "Pop_total",
-                "type": "integer",
-                "sample": "18193799",
-                "include": true
+                "sample": "34096.61",
+                "recommendedType": {
+                  "type": "float"
+                }
               }
             ]
           },
           {
-            "name": "touches.csv",
+            "name": "geometryTypes.csv",
             "expanded": true,
             "fields": [
               {
-                "name": "StartID",
-                "type": "string",
+                "name": "",
+                "sample": "0",
+                "recommendedType": {
+                  "type": "integer"
+                }
+              },
+              {
+                "name": "ID",
                 "sample": "C1",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          {
+            "name": "hasFootprint.csv",
+            "expanded": true,
+            "fields": [
+              {
+                "name": "",
+                "sample": "0",
+                "recommendedType": {
+                  "type": "integer"
+                }
               },
               {
-                "name": "EndID",
-                "type": "string",
-                "sample": "C7",
-                "include": true
+                "name": "Start_Point",
+                "sample": "C1",
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
-                "name": "Rel_Position",
-                "type": "string",
-                "sample": "southwestern",
-                "include": true
+                "name": "End_Point",
+                "sample": "C1",
+                "recommendedType": {
+                  "type": "string"
+                }
               }
             ]
           },
@@ -708,15 +786,105 @@
             "fields": [
               {
                 "name": "Start_Point",
-                "type": "string",
                 "sample": "C1",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
               },
               {
                 "name": "End_Point",
-                "type": "string",
                 "sample": "D1",
-                "include": true
+                "recommendedType": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          {
+            "name": "relates.csv",
+            "expanded": true,
+            "fields": [
+              {
+                "name": "Start_point",
+                "sample": "A1",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "End_point",
+                "sample": "A1",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "Distance_between",
+                "sample": "0.0",
+                "recommendedType": {
+                  "type": "float"
+                }
+              },
+              {
+                "name": "Spatial_relation",
+                "sample": "northern",
+                "recommendedType": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          {
+            "name": "geometries.csv",
+            "expanded": true,
+            "fields": [
+              {
+                "name": "",
+                "sample": "0",
+                "recommendedType": {
+                  "type": "integer"
+                }
+              },
+              {
+                "name": "ID",
+                "sample": "C1",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "Geometry",
+                "sample": "POLYGON ((8.603575110127304 51.484622860915444, 8.603680718866455 51.484486596428596, 8.603724136379...",
+                "recommendedType": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          {
+            "name": "touches.csv",
+            "expanded": true,
+            "fields": [
+              {
+                "name": "StartID",
+                "sample": "C1",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "EndID",
+                "sample": "C2",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "Rel_Position",
+                "sample": "eastern",
+                "recommendedType": {
+                  "type": "string"
+                }
               }
             ]
           }
@@ -725,69 +893,13 @@
       "nodeMappings": [
         {
           "node": {
-            "$ref": "#n:4"
+            "$ref": "#n:1"
           },
-          "tableName": "id_federalStates_pop.csv",
+          "tableName": "geometryTypes.csv",
           "propertyMappings": [
             {
-              "fieldName": "Name",
               "property": {
-                "$ref": "#p:11"
-              }
-            },
-            {
-              "fieldName": "Pop_total",
-              "property": {
-                "$ref": "#p:9"
-              }
-            },
-            {
-              "fieldName": "Area",
-              "property": {
-                "$ref": "#p:3"
-              }
-            },
-            {
-              "property": {
-                "$ref": "#p:10"
-              },
-              "fieldName": "ID"
-            }
-          ]
-        },
-        {
-          "node": {
-            "$ref": "#n:3"
-          },
-          "tableName": "id_administrativeDistricts_pop.csv",
-          "propertyMappings": [
-            {
-              "fieldName": "Name",
-              "property": {
-                "$ref": "#p:8"
-              }
-            },
-            {
-              "fieldName": "Centroid",
-              "property": {
-                "$ref": "#p:13"
-              }
-            },
-            {
-              "fieldName": "Pop_total",
-              "property": {
-                "$ref": "#p:19"
-              }
-            },
-            {
-              "fieldName": "Area",
-              "property": {
-                "$ref": "#p:20"
-              }
-            },
-            {
-              "property": {
-                "$ref": "#p:7"
+                "$ref": "#p:1"
               },
               "fieldName": "ID"
             }
@@ -797,22 +909,86 @@
           "node": {
             "$ref": "#n:2"
           },
-          "tableName": "id_districts_pop.csv",
+          "tableName": "cities.csv",
           "propertyMappings": [
+            {
+              "fieldName": "ID",
+              "property": {
+                "$ref": "#p:2"
+              }
+            },
             {
               "fieldName": "Name",
               "property": {
-                "$ref": "#p:5"
+                "$ref": "#p:3"
               }
             },
             {
               "fieldName": "Centroid",
               "property": {
-                "$ref": "#p:15"
+                "$ref": "#p:4"
               }
             },
             {
-              "fieldName": "Pop_total",
+              "fieldName": "Area",
+              "property": {
+                "$ref": "#p:5"
+              }
+            }
+          ]
+        },
+        {
+          "node": {
+            "$ref": "#n:3"
+          },
+          "tableName": "districts.csv",
+          "propertyMappings": [
+            {
+              "fieldName": "ID",
+              "property": {
+                "$ref": "#p:6"
+              }
+            },
+            {
+              "fieldName": "Name",
+              "property": {
+                "$ref": "#p:7"
+              }
+            },
+            {
+              "fieldName": "Centroid",
+              "property": {
+                "$ref": "#p:8"
+              }
+            },
+            {
+              "fieldName": "Area",
+              "property": {
+                "$ref": "#p:9"
+              }
+            }
+          ]
+        },
+        {
+          "node": {
+            "$ref": "#n:4"
+          },
+          "tableName": "administrativeDistricts.csv",
+          "propertyMappings": [
+            {
+              "fieldName": "ID",
+              "property": {
+                "$ref": "#p:10"
+              }
+            },
+            {
+              "fieldName": "Name",
+              "property": {
+                "$ref": "#p:11"
+              }
+            },
+            {
+              "fieldName": "Centroid",
               "property": {
                 "$ref": "#p:12"
               }
@@ -820,52 +996,40 @@
             {
               "fieldName": "Area",
               "property": {
-                "$ref": "#p:21"
+                "$ref": "#p:13"
               }
-            },
-            {
-              "property": {
-                "$ref": "#p:4"
-              },
-              "fieldName": "ID"
             }
           ]
         },
         {
           "node": {
-            "$ref": "#n:1"
+            "$ref": "#n:5"
           },
-          "tableName": "id_cities_pop.csv",
+          "tableName": "federalStates.csv",
           "propertyMappings": [
+            {
+              "fieldName": "ID",
+              "property": {
+                "$ref": "#p:14"
+              }
+            },
             {
               "fieldName": "Name",
               "property": {
-                "$ref": "#p:2"
+                "$ref": "#p:15"
               }
             },
             {
               "fieldName": "Centroid",
               "property": {
-                "$ref": "#p:17"
-              }
-            },
-            {
-              "fieldName": "Pop_total",
-              "property": {
-                "$ref": "#p:6"
+                "$ref": "#p:16"
               }
             },
             {
               "fieldName": "Area",
               "property": {
-                "$ref": "#p:22"
+                "$ref": "#p:17"
               }
-            },
-            {
-              "property": {
-                "$ref": "#p:1"
-              },
-              "fieldName": "ID"
             }
           ]
         }
@@ -873,62 +1037,9 @@
       "relationshipMappings": [
         {
           "relationship": {
-            "$ref": "#r:6"
+            "$ref": "#r:1"
           },
-          "tableName": "within.csv",
-          "propertyMappings": [],
-          "fromMapping": {
-            "fieldName": "Start_Point"
-          },
-          "toMapping": {
-            "fieldName": "End_Point"
-          }
-        },
-        {
-          "relationship": {
-            "$ref": "#r:4"
-          },
-          "tableName": "touches.csv",
-          "propertyMappings": [
-            {
-              "property": {
-                "$ref": "#p:14"
-              },
-              "fieldName": "Rel_Position"
-            }
-          ],
-          "fromMapping": {
-            "fieldName": "StartID"
-          },
-          "toMapping": {
-            "fieldName": "EndID"
-          }
-        },
-        {
-          "relationship": {
-            "$ref": "#r:5"
-          },
-          "tableName": "touches.csv",
-          "propertyMappings": [
-            {
-              "property": {
-                "$ref": "#p:16"
-              },
-              "fieldName": "Rel_Position"
-            }
-          ],
-          "fromMapping": {
-            "fieldName": "StartID"
-          },
-          "toMapping": {
-            "fieldName": "EndID"
-          }
-        },
-        {
-          "relationship": {
-            "$ref": "#r:3"
-          },
-          "tableName": "within.csv",
+          "tableName": "hasFootprint.csv",
           "propertyMappings": [],
           "fromMapping": {
             "fieldName": "Start_Point"
@@ -941,6 +1052,45 @@
           "relationship": {
             "$ref": "#r:2"
           },
+          "tableName": "hasFootprint.csv",
+          "propertyMappings": [],
+          "fromMapping": {
+            "fieldName": "Start_Point"
+          },
+          "toMapping": {
+            "fieldName": "End_Point"
+          }
+        },
+        {
+          "relationship": {
+            "$ref": "#r:3"
+          },
+          "tableName": "hasFootprint.csv",
+          "propertyMappings": [],
+          "fromMapping": {
+            "fieldName": "Start_Point"
+          },
+          "toMapping": {
+            "fieldName": "End_Point"
+          }
+        },
+        {
+          "relationship": {
+            "$ref": "#r:4"
+          },
+          "tableName": "hasFootprint.csv",
+          "propertyMappings": [],
+          "fromMapping": {
+            "fieldName": "Start_Point"
+          },
+          "toMapping": {
+            "fieldName": "End_Point"
+          }
+        },
+        {
+          "relationship": {
+            "$ref": "#r:5"
+          },
           "tableName": "within.csv",
           "propertyMappings": [],
           "fromMapping": {
@@ -952,13 +1102,39 @@
         },
         {
           "relationship": {
-            "$ref": "#r:1"
+            "$ref": "#r:6"
+          },
+          "tableName": "relates.csv",
+          "propertyMappings": [
+            {
+              "fieldName": "Distance_between",
+              "property": {
+                "$ref": "#p:18"
+              }
+            },
+            {
+              "fieldName": "Spatial_relation",
+              "property": {
+                "$ref": "#p:19"
+              }
+            }
+          ],
+          "fromMapping": {
+            "fieldName": "Start_point"
+          },
+          "toMapping": {
+            "fieldName": "End_point"
+          }
+        },
+        {
+          "relationship": {
+            "$ref": "#r:7"
           },
           "tableName": "touches.csv",
           "propertyMappings": [
             {
               "property": {
-                "$ref": "#p:18"
+                "$ref": "#p:20"
               },
               "fieldName": "Rel_Position"
             }
