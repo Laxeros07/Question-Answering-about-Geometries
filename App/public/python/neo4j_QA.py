@@ -26,6 +26,27 @@ Use the following examples for few shot learning.
 Schema:
 {schema}
 
+# In which District lies Siegburg?
+MATCH (c:City {Name: 'Siegburg'}) - [:hasFootprint] -> (:Geometry) - [:within] -> (:Geometry) <- [:hasFootprint] - (d:District) RETURN d.Name
+
+# In whicih administrative District lies Rhein-Sieg-Kreis?
+MATCH (d:District{Name: "Rhein-Sieg-Kreis"}) - [:hasFootprint] -> (:Geometry) - [:within] -> (:Geometry) <- [:hasFootprint] - (ad:AdministrativeDistrict) RETURN ad.Name
+
+# In which administrative District lies Siegburg?
+MATCH r1 =
+  (c:City {Name: 'Siegburg'})
+    -[:hasFootprint]->(:Geometry)
+    -[:within]->(:Geometry)
+    <-[:hasFootprint]-(d:District)
+
+MATCH r2 =
+  (d)
+    -[:hasFootprint]->(:Geometry)
+    -[:within]->(:Geometry)
+    <-[:hasFootprint]-(ad:AdministrativeDistrict)
+
+RETURN ad
+
 Note: Do not include any explanations or apologies in your responses.
 Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
 Do not include any text except the generated Cypher statement.
