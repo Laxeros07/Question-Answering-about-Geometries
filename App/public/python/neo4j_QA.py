@@ -47,6 +47,9 @@ MATCH r2 =
 
 RETURN ad
 
+# Which cities lie next to Siegburg?
+MATCH (c:City {Name: 'Siegburg'}) - [:hasFootprint] -> (:Geometry) <- [:touches] - (:Geometry) <- [:hasFootprint] - (c2:City)  RETURN c2.Name
+
 Note: Do not include any explanations or apologies in your responses.
 Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
 Do not include any text except the generated Cypher statement.
