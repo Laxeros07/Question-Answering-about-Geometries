@@ -24,13 +24,13 @@ def write_layers(cities, districts, administrativeDistricts, federalStates, geom
     df_federalStates.to_csv('Graph_old\Data_Management\\test_new_model\\federalStates.csv', index=False, sep = ",")
 
     df_geometries = pd.DataFrame(geometries)
-    df_geometries.to_csv('Graph_old\Data_Management\\test_new_model\\geometries.csv')
+    df_geometries.to_csv('Graph_old\Data_Management\\test_new_model\\geometries.csv', index=False)
 
-    df_geometries = pd.DataFrame(geometryTypes)
-    df_geometries.to_csv('Graph_old\Data_Management\\test_new_model\\geometryTypes.csv')
+    df_geometryTypes = pd.DataFrame(geometryTypes)
+    df_geometryTypes.to_csv('Graph_old\Data_Management\\test_new_model\\geometryTypes.csv', index=False)
 
     df_hasFootprint = pd.DataFrame(hasFootprint)
-    df_hasFootprint.to_csv('Graph_old\Data_Management\\test_new_model\\hasFootprint.csv')
+    df_hasFootprint.to_csv('Graph_old\Data_Management\\test_new_model\\hasFootprint.csv', index=False)
 
 def write_within(within):
     df_lies_in = pd.DataFrame(within) 
