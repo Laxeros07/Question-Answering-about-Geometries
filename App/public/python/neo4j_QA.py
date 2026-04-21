@@ -20,35 +20,36 @@ Use only the provided relationship types and properties in the schema.
 Do not use any other relationship types or properties that are not provided.
 Use the unit km insteat of meters in your answer.
 All questions are in utf-8 encoded.
-Always return the whole graph (RETURN p) in the Cypher statement.
+Always return the whole graph (MATCH p=... RETURN p) in the Cypher statement.
+Do not use Markdown formatting. Do not use asterisks, bold text or italics. Return plain text only.
 Use the following examples for few shot learning.
 
 Schema:
 {schema}
 
 # In which District lies Siegburg?
-MATCH (c:City {Name: 'Siegburg'}) - [:hasFootprint] -> (:Geometry) - [:within] -> (:Geometry) <- [:hasFootprint] - (d:District) RETURN d.Name
+MATCH p=(:City {{Name: 'Siegburg'}}) - [:hasFootprint] -> (:Geometry) - [:within] -> (:Geometry) <- [:hasFootprint] - (:District) RETURN p
 
-# In whicih administrative District lies Rhein-Sieg-Kreis?
-MATCH (d:District{Name: "Rhein-Sieg-Kreis"}) - [:hasFootprint] -> (:Geometry) - [:within] -> (:Geometry) <- [:hasFootprint] - (ad:AdministrativeDistrict) RETURN ad.Name
+# In which administrative District lies Rhein-Sieg-Kreis?
+MATCH p=(:District {{Name: "Rhein-Sieg-Kreis"}}) - [:hasFootprint] -> (:Geometry) - [:within] -> (:Geometry) <- [:hasFootprint] - (:AdministrativeDistrict) RETURN p
 
 # In which administrative District lies Siegburg?
 MATCH r1 =
-  (c:City {Name: 'Siegburg'})
+  (:City {{Name: 'Siegburg'}})
     -[:hasFootprint]->(:Geometry)
     -[:within]->(:Geometry)
-    <-[:hasFootprint]-(d:District)
+    <-[:hasFootprint]-(:District)
 
 MATCH r2 =
   (d)
     -[:hasFootprint]->(:Geometry)
     -[:within]->(:Geometry)
-    <-[:hasFootprint]-(ad:AdministrativeDistrict)
+    <-[:hasFootprint]-(:AdministrativeDistrict)
 
-RETURN ad
+RETURN r1,r2
 
 # Which cities lie next to Siegburg?
-MATCH (c:City {Name: 'Siegburg'}) - [:hasFootprint] -> (:Geometry) <- [:touches] - (:Geometry) <- [:hasFootprint] - (c2:City)  RETURN c2.Name
+MATCH p=(:City {{Name: 'Siegburg'}}) - [:hasFootprint] -> (:Geometry) <- [:touches] - (:Geometry) <- [:hasFootprint] - (:City)  RETURN p
 
 Note: Do not include any explanations or apologies in your responses.
 Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
@@ -63,7 +64,7 @@ CYPHER_GENERATION_PROMPT = PromptTemplate(
 # Neo4j connection
 url = "neo4j://localhost:7687" #neo4j+ssc://f02e0524.databases.neo4j.io:7687"
 username = "neo4j"
-password = "chatwithgermany" #"w60PF-SK2gGIlDII6zZMw8XMo67mqIFSrPU54_E3AU4"
+password = "admin2026" #"w60PF-SK2gGIlDII6zZMw8XMo67mqIFSrPU54_E3AU4"
 
 graph = Neo4jGraph(
     url=url,
@@ -77,8 +78,8 @@ os.environ["OPENAI_API_KEY"] = openAiKey
 
 chain = GraphCypherQAChain.from_llm(
     graph=graph,
-    cypher_llm=ChatOpenAI(temperature=0, model="gpt-4o-mini"), # gpt-4o-mini	gpt-3.5-turbo
-    qa_llm=ChatOpenAI(temperature=0, model="gpt-4o-mini"),
+    cypher_llm=ChatOpenAI(temperature=0, model="gpt-5.4-nano"), # gpt-4o-mini	gpt-3.5-turbo
+    qa_llm=ChatOpenAI(temperature=0, model="gpt-5.4-nano"),
     verbose=False,
     allow_dangerous_requests=True,
     cypher_prompt=CYPHER_GENERATION_PROMPT,
@@ -91,9 +92,12 @@ async def handle_request(input_data):
     try:
         result = await chain.ainvoke(input_data)
         return result
-    except:
-        # Error handling
-        return {"result": "An error occurred while processing the request. Maybe the given API key is not valid." }
+    except Exception as e:
+        return {
+            "result": "An error occurred while processing the request.",
+            "error": str(e),
+            "type": type(e).__name__
+        }
 
 # User Input for the question
 question = sys.argv[1]
