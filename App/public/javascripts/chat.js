@@ -24,7 +24,7 @@ function renderMessageToScreen(args) {
       day: "numeric",
       hour: "numeric",
       minute: "numeric",
-    }
+    },
   );
   let messagesContainer = $(".messages");
 
@@ -65,7 +65,7 @@ function renderMessageToScreen(args) {
   }, 0);
   messagesContainer.animate(
     { scrollTop: messagesContainer.prop("scrollHeight") },
-    300
+    300,
   );
 }
 
@@ -156,7 +156,7 @@ $("#send_button").on("click", function (e) {
         var uniqueIDs = ids.filter(
           (item, index, self) =>
             index ===
-            self.findIndex((t) => t.id === item.id && t.name === item.name)
+            self.findIndex((t) => t.id === item.id && t.name === item.name),
         );
         console.log(uniqueIDs);
         parseCSV(uniqueIDs);
@@ -222,7 +222,7 @@ function renderLoadingHorse() {
   }, 0);
   messagesContainer.animate(
     { scrollTop: messagesContainer.prop("scrollHeight") },
-    300
+    300,
   );
 }
 
@@ -234,7 +234,7 @@ function removeRunningHorse() {
   messagesContainer.children().last().remove();
   messagesContainer.animate(
     { scrollTop: messagesContainer.prop("scrollHeight") },
-    300
+    300,
   );
 }
 
@@ -259,6 +259,9 @@ async function parseCSV(searchIDs) {
   const rows = parsed.data;
   // get the geometries and add them to the leaflet map
   for (const item of searchIDs.slice().reverse()) {
+    if (item.name == null) {
+      continue;
+    }
     let result = rows.find((row) => row.ID == item.id);
 
     // get the type of the geometry
@@ -357,6 +360,6 @@ async function parseCSV(searchIDs) {
  */
 $(window).on("load", function () {
   showBotMessage(
-    "Hello there! Ask me some questions about the geometry of NRW. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage"
+    "Hello there! Ask me some questions about the geometry of NRW. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
   );
 });
