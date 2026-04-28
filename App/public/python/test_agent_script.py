@@ -2,7 +2,7 @@
 # Install (falls nötig)
 # pip install langgraph langchain langchain-openai neo4j
 
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Optional, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
 from langchain_community.graphs import Neo4jGraph
@@ -18,43 +18,34 @@ graph = Neo4jGraph(
     username="neo4j",
     password="chatwithgermany"
 )
-# State
-from typing import TypedDict
 
 class AgentState(TypedDict):
     # INPUT
     question: str  
-    # User Question 
 
-    # INTERPRETATION (durch LLM)
+    # INTERPRETATION
     intent: str  
-    # Question Type:
-    # - "within"  → Hierachy
-    # - "touches" → Neighbourhood
-    # - "relates"
-    # → is used for routing in the grap
-    
     entity_name: str  
-    # Name of the entity
 
+    # ENTITY RESOLUTION
     source_type: str  
-    # Starting Node in the Graph
-    # Example: "City", "District", "AdministrativeDistrict", "FederalState"
-
     target_type: str  
-    # End Node in the Graph
-    # Important for:
-    # - Direction
-    # - Step Count
 
-    direction: str  
-    # - "up" District → FederalState)
-    # - "down" FederalState → District)
-    # → decides, which Query-Logic is used
+    # HIERARCHY
+    direction: str   # "up" | "down" | "same"
 
-    # QUERY GENERATION
+    # 🌍 SPATIAL (NEW)
+    cardinal_direction: Optional[str]   # "north" | "south" | "east" | "west" | None
+
+    distance_filter: Optional[Dict]    
+    # {
+    #   "operator": "<", ">", "<=", ">=", "="
+    #   "value": 10,
+    #   "unit": "km"
+    # }
+
+    # QUERY
     cypher_query: str  
-    # Neo4j Cypher Query
 
     # OUTPUT
     result: str  
@@ -94,57 +85,149 @@ def normalize(text: str):
 
     return None
 # Parsing
-def safe_parse(response):
+def safe_parse(response: str):
     import json
+
     try:
         data = json.loads(response)
-    except:
-        return {"intent": "within", "entity_name": ""}
+    except Exception:
+        # kompletter Fallback
+        return {
+            "intent": "within",
+            "entity_name": "",
+            "cardinal_direction": None,
+            "distance": None
+        }
 
+    # ✅ Pflichtfelder
     data.setdefault("intent", "within")
     data.setdefault("entity_name", "")
+
+    # ✅ Neue Felder (für spatial queries)
+    data.setdefault("cardinal_direction", None)
+    data.setdefault("distance", None)
+
+    # ✅ Normalisierung / Safety
+
+    # intent absichern
+    if data["intent"] not in ["within", "touches", "relates"]:
+        data["intent"] = "within"
+
+    # direction normalisieren
+    if data.get("cardinal_direction"):
+        dir_raw = data["cardinal_direction"].lower()
+
+        mapping = {
+            # north
+            "north": "northern",
+
+            # south
+            "south": "southern",
+
+            # east
+            "east": "eastern",
+
+            # west
+            "west": "western",
+
+            # diagonals
+            "northeast": "northeastern",
+            "northwest": "northwestern",
+            "southeast": "southeastern",
+            "southwest": "southwestern"
+        }
+
+        data["cardinal_direction"] = mapping.get(dir_raw, dir_raw)
+
+    # distance absichern
+    if data["distance"] is not None:
+        try:
+            data["distance"] = float(data["distance"])
+        except:
+            data["distance"] = None
 
     return data
 # Interpret Query
 def interpret_query(state):
     prompt = f"""
-Classify the question into one of these intents:
 
-- "within": hierarchical containment (lies in, belongs to, is in)
-- "touches": geographic neighbors (lies next to, is next to, touches)
-- "relates": generic relation
+    Question:
+    {state['question']}
 
-Find out the entity name. The The entity name is the name of a place in Germany.
+    Return ONLY valid JSON with this schema:
+    {{
+    "intent": "within | touches | relates",
+    "entity_name": "...",
+    "cardinal_direction": "northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern | null",
+    "distance_filter": {{
+        "operator": "< | > | = | <= | >= | null",
+        "value": number | null,
+        "unit": "km | m | null"
+    }}
+    }}
 
-Question:
-{state['question']}
 
-Return JSON:
-{{
-  "intent": "...",
-  "entity_name": "..."
-}}
+    1. Classify the question into one of these intents:
 
-Rules:
-- "lies in", "in which ..." → ALWAYS "within"
-- "Which ... lie in ..." → ALWAYS "within"
-- "next to" → ALWAYS "touches"
-- "relates" → ALWAYS "relates"
+    - "within": hierarchical containment (lies in, belongs to, is in)
+    - "touches": geographic neighbors (lies next to, is next to, touches)
+    - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
 
--The entity name is never a word like: 
-- "City", "Cities",
-- "District", "Districts"
-- "Administrative", "federal", "State"
-"""
+    2. Find out the entity name. The entity name is the name of a place in Germany.
+
+    Rules:
+    - "lies in", "in which ..." → ALWAYS "within"
+    - "Which ... lie in ..." → ALWAYS "within"
+
+    - "next to", "border ..." → ALWAYS "touches"
+
+    - "relates" → ALWAYS "relates"
+    - "What lies north/south/east/west of ...?" → ALWAYS "relates"
+    - "How far ..." → ALWAYS "relates"
+
+    -The name of the entity is NEVER a word like: 
+    - "City", "Cities",
+    - "District", "Districts"
+    - "Administrative", "federal", "State"
+
+    3. For intent = "relates":
+        3.1. cardinal_direction:
+        - Extract if mentioned ("northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern)
+        - "north", "northern" → ALWAYS cardinal_direction = "northern"
+        - "south", "southern" → ALWAYS cardinal_direction = "southern"
+        - "east", "eastern" → ALWAYS cardinal_direction = "eastern"
+        - "west", "western" → ALWAYS cardinal_direction = "western"
+        - "northeast", "northeastern" → ALWAYS cardinal_direction = "northeastern"
+        - "northwest", "northwestern" → ALWAYS cardinal_direction = "northwestern"
+        - "southeast", "southeastern" → ALWAYS cardinal_direction = "southeastern"
+        - "southwest", "southwestern" → ALWAYS cardinal_direction = "southwestern"
+        - Otherwise return null
+
+        3.2. distance:
+        - Extract ONLY if a distance constraint is mentioned
+        - Convert all numbers to numeric values (no strings)
+        - Normalize units:
+        - "km", "kilometer" → km
+        - "m", "meter" → m
+
+        3.3. operator mapping:
+        - "less than", "unter", "weniger als" → "<"
+        - "more than", "über", "mehr als" → ">"
+        - "within", "max", "höchstens" → "<="
+        - "exactly", "genau" → "="
+
+    """
 
     response = llm.invoke(prompt).content
     parsed = safe_parse(response)
 
     return {
-        **state,
-        "intent": parsed["intent"],
-        "entity_name": parsed["entity_name"]
-    }
+            **state,
+            "intent": parsed.get("intent"),
+            "entity_name": parsed.get("entity_name"),
+            "cardinal_direction": parsed.get("cardinal_direction"),
+            "distance": parsed.get("distance")
+        }
 
 
 # Entity Type Resolver
@@ -164,7 +247,7 @@ def resolve_entity_type(state):
         return {**state, "source_type": types[0]}
     
     if not results:
-        return {**state, "source_type": "District"}  # or None if you prefer strictness
+        return {**state, "source_type": "District"}  # or None?
 
     # ✅ FALL 2: several results → LLM
     prompt = f"""
@@ -186,17 +269,25 @@ Task:
 Pick the MOST appropriate type for the entity in this question.
 
 Rules:
-- If a Type ("City | District | AdministrativeDistrict | FederalState") is stated in the question like in the following examples:
-    - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
-    - If "District of" or "the District ..." is in the question → the source type = District
-    - If "federal State of" or "the federal State ..." is in the question → the source type = FederalState
-use them as source type in every case
+- If intent = "within":
+    - If a Type ("City | District | AdministrativeDistrict | FederalState") is stated in the question like in the following examples:
+        - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
+        - If "District of" or "the District ..." is in the question → the source type = District
+        - If "federal State of" or "the federal State ..." is in the question → the source type = FederalState
+    use them as source type in every case
 
-- If asking "Which Cities lie within ..." → the source type must be: "District" or "AdministrativeDistrict" or "FederalState"
-- If asking "Which Districts lie within ..." → the source type must be: "AdministrativeDistrict" or "FederalState"
-- If asking "Which administrative Districts lie within ..." → the source type must be: "FederalState"
-- If asking "liegt in Bundesland" → entity is usually a City
-- If "touches" → same level entities
+    - If asking "Which Cities lie within ..." → the source type must be: "District" or "AdministrativeDistrict" or "FederalState"
+    - If asking "Which Districts lie within ..." → the source type must be: "AdministrativeDistrict" or "FederalState"
+    - If asking "Which administrative Districts lie within ..." → the source type must be: "FederalState"
+
+- If intent = "touches":
+    - If asking "Which Cities lie next to (border) ..." → source type = "City"
+    - If asking "Which administrative Districts lie next to (border) ..." → source type =  "AdministrativeDistrict"
+    - If asking "Which Districts lie next to (border) ..." → source type = "District"
+    - If asking "Which federal States lie next to (border) ..." → "FederalState"
+    - If "touches" → same level entities
+
+- If intent = "relates":
 
 Return ONLY JSON:
 {{
@@ -378,24 +469,54 @@ def build_touches_query(state):
     return {
         **state,
         "cypher_query": f"""
-        MATCH p=
-        (:{state['source_type']} {{Name: '{state['entity_name']}'}})
+        MATCH 
+        (start:{state['source_type']} {{Name: '{state['entity_name']}'}})
         -[:hasFootprint]->(:Geometry)
         <-[:touches]-(:Geometry)
-        <-[:hasFootprint]-(:{state['source_type']})
-        RETURN p
+        <-[:hasFootprint]-(neighbor:{state['source_type']})
+
+        RETURN DISTINCT neighbor.Name AS result
         """
     }
 # relates
 def build_relates_query(state):
+    cardinal_direction = state.get("cardinal_direction")
+    distance = state.get("distance_filter")
+
+    where_clauses = []
+    rel_props = []
+
+    # Richtung
+    if cardinal_direction:
+        rel_props.append(f"Spatial_relation: '{cardinal_direction}'")
+
+    # Beziehung bauen
+    rel_filter = ""
+    if rel_props:
+        rel_filter = "{" + ", ".join(rel_props) + "}"
+
+    # Distanz
+    if distance:
+        where_clauses.append(f"r.Distance_between {distance['op']} {distance['value']}")
+
+    where_stmt = ""
+    if where_clauses:
+        where_stmt = "WHERE " + " AND ".join(where_clauses)
+
+    query = f"""
+    MATCH 
+    (start:{state['source_type']} {{Name: '{state['entity_name']}'}})
+    -[:hasFootprint]->(g1:Geometry)
+    -[r:relates {rel_filter}]->(g2:Geometry)
+    <-[:hasFootprint]-(other:{state['source_type']})
+
+    {where_stmt}
+
+    RETURN DISTINCT other.Name AS result
+    """
     return {
         **state,
-        "cypher_query": f"""
-        MATCH p=
-        (:{state['source_type']} {{Name: '{state['entity_name']}'}})
-        -[:relates]->(:{state['source_type']})
-        RETURN p
-        """
+        "cypher_query": query
     }
 # execute query
 def execute_query(state):
@@ -468,12 +589,16 @@ from IPython.display import Image, display
 #     "question": "Which Cities lie in the administrative District of Münster?"
 # }))
 
-print(compiled_graph.invoke({
-    "question": "In which federal State lies Selm?"
-}))
+# print(compiled_graph.invoke({
+#     "question": "In which federal State lies Selm?"
+# }))
 # compiled_graph.invoke({
 #     "question": "What Cities lie in Rhein-Sieg-Kreis?"
 # })
-# compiled_graph.invoke({
-#     "question": "Which City is next to Siegburg?"
-# })
+# print(compiled_graph.invoke({
+#     "question": "Which administrative Districts lie next to Düsseldorf?"
+# }))
+
+print(compiled_graph.invoke({
+    "question": "Which City lie in a 10km distance of Selm?"
+}))
