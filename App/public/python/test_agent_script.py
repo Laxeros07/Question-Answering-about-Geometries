@@ -368,9 +368,6 @@ Rules:
 - "Which Districts lie in the administrative District of ..." → target type = District
 
 - Be careful with the types 'District' and 'AdministrativeDistrict', only take 'AdministrativeDistrict' if the question includes the word "administrative".
-- "Which Districts lie in the administrative District of ..." → target type = District
-
-- Be careful with the types 'District' and 'AdministrativeDistrict', only take 'AdministrativeDistrict' if the question includes the word "administrative".
 
 - "touches" → same type as source
 - If unclear → choose the most logical level based on hierarchy
