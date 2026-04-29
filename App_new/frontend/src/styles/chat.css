@@ -1,0 +1,292 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #edeff2;
+  font-family: "Calibri", "Roboto", sans-serif;
+}
+
+.row.padded_row,
+.row.padded_row > div {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+/* layout and common global classes */
+/* ---------------------------------------------------------------------- */
+
+.chat_window {
+  border-radius: 10px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  background-color: #f8f8f8;
+  overflow: hidden;
+}
+
+.top_menu {
+  background-color: #fff;
+  padding: 13px 0px;
+  box-shadow: 0 1px 30px rgba(0, 0, 0, 0.1);
+}
+
+.top_menu .title {
+  text-align: center;
+  color: #337ab7;
+  font-size: 20px;
+}
+
+/* messages inside the chatbox */
+/* ---------------------------------------------------------------------- */
+
+.messages {
+  position: relative;
+  list-style: none;
+  padding: 20px 10px 0 10px;
+  margin: 0;
+  height: 400px;
+  overflow: scroll;
+}
+
+.messages .message {
+  clear: both;
+  overflow: hidden;
+  margin-bottom: 20px;
+  transition: all 0.5s linear;
+  opacity: 0;
+}
+
+.messages .message .avatar {
+  height: 40px;
+  width: 40px;
+  background-size: cover !important;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.messages .message .l-gif {
+  width: 50px;
+  height: 40px;
+  background-size: contain !important;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: inline-block;
+  margin-left: 10px;
+}
+
+.messages .message .timestamp {
+  font-size: 10px;
+  font-weight: 300;
+  text-align: right;
+  margin-top: 5px;
+}
+
+.messages .message.appeared {
+  opacity: 1;
+}
+
+.messages .message .text_wrapper {
+  display: inline-block;
+  padding: 20px;
+  border-radius: 6px;
+  min-width: 150px;
+  position: relative;
+}
+
+.messages .message .text_wrapper::after,
+.messages .message .text_wrapper:before {
+  top: 18px;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+
+.messages .message .text_wrapper::after {
+  border-width: 13px;
+  margin-top: 0px;
+}
+
+.messages .message .text_wrapper::before {
+  border-width: 15px;
+  margin-top: -2px;
+}
+
+/* bot message */
+
+.messages .message.left .avatar {
+  float: left;
+  background: url("../assets/images/favicon.png");
+}
+
+.l-gif {
+  float: left;
+  height: 50px;
+  width: 50px;
+  background-size: contain !important;
+  background-repeat: no-repeat;
+  background-position: center;
+  background: url("../assets/images/typing-crop2.gif");
+}
+
+.messages .message.left .text_wrapper {
+  background-color: #c0eed1;
+  margin-left: 20px;
+}
+
+.messages .message.left .text_wrapper::after,
+.messages .message.left .text_wrapper::before {
+  right: 100%;
+  border-right-color: #c0eed1;
+}
+
+.messages .message.left .timestamp {
+  color: #009036;
+}
+
+/* user message */
+
+.messages .message.right .avatar {
+  float: right;
+  background: url("../assets/images/user.png");
+}
+
+.messages .message.right .text_wrapper {
+  background-color: #ffbec6;
+  margin-right: 20px;
+  float: right;
+}
+
+.messages .message.right .text_wrapper::after,
+.messages .message.right .text_wrapper::before {
+  left: 100%;
+  border-left-color: #ffbec6;
+}
+
+.messages .message.right .timestamp {
+  color: #b71f31;
+}
+
+/* text inpur from user */
+
+.bottom_wrapper {
+  background-color: #fff;
+  padding: 20px;
+  bottom: 0;
+  display: flex;
+}
+
+.bottom_wrapper #msg_input {
+  flex-grow: 1;
+  outline-width: 0;
+  padding: 12px;
+  border: 1px solid #bcbdc0;
+  border-radius: 50px;
+  margin-right: 15px;
+}
+
+.app_button_1 {
+  width: 140px;
+  background-color: #009036;
+  border-radius: 50px;
+  cursor: pointer;
+  padding: 12px;
+
+  color: #fff;
+  font-size: 18px;
+  font-weight: 300;
+  text-align: center;
+}
+
+.saveBtn {
+  background-color: #e2001a;
+
+  color: #fff;
+}
+
+/* Functions that the text breaks correctly*/
+
+.message {
+  display: flex;
+  align-items: flex-start;
+}
+
+.message.left {
+  justify-content: flex-start;
+}
+
+.message.right {
+  justify-content: flex-end;
+}
+/*Source: https://stackoverflow.com/questions/67858284/how-to-have-one-item-shrink-fully-before-another-starts-to-shrink */
+.avatar {
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+
+.text_wrapper {
+  flex-shrink: 1;
+  flex-grow: 0;
+  flex-basis: auto;
+  min-width: 0;
+}
+
+/* faq section | right side */
+/* ---------------------------------------------------------------------- */
+
+.panel-group {
+  padding: 5px;
+}
+
+.panel-group > div {
+  width: calc(100% - 10px) !important;
+}
+
+.panel-heading [data-toggle="collapse"]:after {
+  font-family: "FontAwesome";
+  content: "\f054";
+  float: right;
+  font-size: 18px;
+  line-height: 22px;
+  transition: all 0.2s linear;
+
+  -webkit-transform: rotate(-90deg);
+  -moz-transform: rotate(-90deg);
+  -ms-transform: rotate(-90deg);
+  -o-transform: rotate(-90deg);
+  transform: rotate(-90deg);
+}
+
+.panel-heading [data-toggle="collapse"].collapsed:after {
+  -webkit-transform: rotate(90deg);
+  -moz-transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
+  -o-transform: rotate(90deg);
+  transform: rotate(90deg);
+}
+
+/*API  Key Modal*/
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-box {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 400px;
+}
+
+.top_menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+}
