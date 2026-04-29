@@ -282,6 +282,11 @@ Task:
 Pick the MOST appropriate type for the entity in this question.
 
 Rules:
+- If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
+    - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
+    - If "District of" or "the District ..." is in the question → the source type = District
+    - If "federal State of" or "the federal State ..." is in the question → the source type = FederalState
+use them as source type in every case
 - If intent = "within":
     - If a Type ("City | District | AdministrativeDistrict | FederalState") is stated in the question like in the following examples:
         - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
@@ -360,6 +365,9 @@ Rules:
 - "Which Cities lie in ..." → target type = City
 - "Which administrative Districts lie in ..." → target type = AdministrativeDistrict
 - "Which Districts lie in ..." → target type = District
+- "Which Districts lie in the administrative District of ..." → target type = District
+
+- Be careful with the types 'District' and 'AdministrativeDistrict', only take 'AdministrativeDistrict' if the question includes the word "administrative".
 
 - "touches" → same type as source
 - If unclear → choose the most logical level based on hierarchy
