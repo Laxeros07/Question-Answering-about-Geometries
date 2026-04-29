@@ -1,20 +1,27 @@
 import PageTitle from "../components/PageTitle";
-import Map from "../components/Map";
-import { useRef, useState, useEffect } from "react";
+import { useRef } from "react";
+import { useState, useEffect } from "react";
+import Map, {
+  findKeysRecursively,
+  loadGeometries,
+  clearGeometries,
+} from "../components/Map";
 
 export default function Chat() {
+  const mapInstanceRef = useRef(null);
   const [apiKey, setApiKey] = useState("");
   const [showModal, setShowModal] = useState(true);
 
   useEffect(() => {
     const savedKey = localStorage.getItem("openai_key");
-
+    // If there already is a key in the local storage, hide the window.
     if (savedKey) {
       setApiKey(savedKey);
       setShowModal(false);
     }
   }, []);
 
+  // API key is stored in the local storage of the browser.
   const saveKey = () => {
     if (!apiKey.startsWith("sk-")) {
       alert("Invalid key format");
@@ -26,6 +33,7 @@ export default function Chat() {
 
   const [messages, setMessages] = useState([
     {
+      // Define starting message of the chatbot
       text: "Hello there! Ask me some questions about the geometry of NRW. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
       side: "left",
       time: new Date().toLocaleTimeString(),
@@ -33,12 +41,12 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
+    // Remove old geometries from the map
+    clearGeometries(mapInstanceRef);
 
     const question = input;
     setInput("");
@@ -53,6 +61,7 @@ export default function Chat() {
       },
     ]);
 
+    // Loading animation starts
     setIsLoading(true);
 
     try {
@@ -65,7 +74,8 @@ export default function Chat() {
         }),
       });
 
-      const data = await res.json();
+      var data = await res.json();
+      data = JSON.parse(data.result);
 
       setMessages((prev) => [
         ...prev,
@@ -76,13 +86,31 @@ export default function Chat() {
           appeared: false,
         },
       ]);
+
+      // Intermediate_steps is undefined, when an error occured.
+      if (data.intermediate_steps) {
+        let ids = [];
+        data.intermediate_steps[1].context.forEach((item) => {
+          findKeysRecursively(item, ids);
+        });
+        // Delete duplicates
+        var uniqueIDs = ids.filter(
+          (item, index, self) =>
+            index ===
+            self.findIndex((t) => t.id === item.id && t.name === item.name),
+        );
+        console.log(uniqueIDs);
+        loadGeometries(uniqueIDs, mapInstanceRef);
+      }
     } catch (err) {
       console.error(err);
     } finally {
+      //Stop loading animation
       setIsLoading(false);
     }
   };
 
+  // Send message when Enter is pressed
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       sendMessage();
@@ -218,7 +246,7 @@ export default function Chat() {
               </div>
 
               <div className="panel-group">
-                <Map />
+                <Map mapInstanceRef={mapInstanceRef} />
               </div>
             </div>
           </div>
