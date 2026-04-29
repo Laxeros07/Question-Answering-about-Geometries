@@ -34,7 +34,7 @@ class AgentState(TypedDict):
     # HIERARCHY
     direction: str   # "up" | "down" | "same"
 
-    # 🌍 SPATIAL (NEW)
+    # 🌍 SPATIAL
     cardinal_direction: Optional[str]   # "north" | "south" | "east" | "west" | None
 
     distance_filter: Optional[Dict]    
@@ -49,13 +49,15 @@ class AgentState(TypedDict):
 
     # OUTPUT
     result: str  
-# Hierarchy
+    # Hierarchy
+
 HIERARCHY = [
     "City",
     "District",
     "AdministrativeDistrict",
     "FederalState"
 ]
+
 # Normalizer
 def normalize(text: str):
     text = text.lower()
@@ -84,6 +86,7 @@ def normalize(text: str):
             return v
 
     return None
+
 # Parsing
 def safe_parse(response: str):
     import json
@@ -91,29 +94,29 @@ def safe_parse(response: str):
     try:
         data = json.loads(response)
     except Exception:
-        # kompletter Fallback
+        # Fallback
         return {
             "intent": "within",
             "entity_name": "",
             "cardinal_direction": None,
-            "distance": None
+            "distance_filter": None
         }
 
-    # ✅ Pflichtfelder
+    # ✅ Mandatory fields
     data.setdefault("intent", "within")
     data.setdefault("entity_name", "")
 
-    # ✅ Neue Felder (für spatial queries)
+    # ✅ Spatial Queries
     data.setdefault("cardinal_direction", None)
-    data.setdefault("distance", None)
+    data.setdefault("distance_filter", None)
 
-    # ✅ Normalisierung / Safety
+    # ✅ Normalisation
 
-    # intent absichern
+    # ensure intent
     if data["intent"] not in ["within", "touches", "relates"]:
         data["intent"] = "within"
 
-    # direction normalisieren
+    # normalise direction
     if data.get("cardinal_direction"):
         dir_raw = data["cardinal_direction"].lower()
 
@@ -139,14 +142,26 @@ def safe_parse(response: str):
 
         data["cardinal_direction"] = mapping.get(dir_raw, dir_raw)
 
-    # distance absichern
-    if data["distance"] is not None:
-        try:
-            data["distance"] = float(data["distance"])
-        except:
-            data["distance"] = None
+    # ensure distance 
+    if data.get("distance_filter"):
+        df = data["distance_filter"]
 
+        if isinstance(df, dict):
+            # Validation
+            data["distance_filter"] = {
+                "operator": df.get("operator"),
+                "value": df.get("value"),
+                "unit": df.get("unit")
+            }
+
+            # optional: if empty -> None
+            if all(v is None for v in data["distance_filter"].values()):
+                data["distance_filter"] = None
+
+        else:
+            data["distance_filter"] = None
     return data
+    
 # Interpret Query
 def interpret_query(state):
     prompt = f"""
@@ -203,7 +218,7 @@ def interpret_query(state):
         - "southwest", "southwestern" → ALWAYS cardinal_direction = "southwestern"
         - Otherwise return null
 
-        3.2. distance:
+        3.2. distance_filter:
         - Extract ONLY if a distance constraint is mentioned
         - Convert all numbers to numeric values (no strings)
         - Normalize units:
@@ -220,19 +235,17 @@ def interpret_query(state):
 
     response = llm.invoke(prompt).content
     parsed = safe_parse(response)
-
     return {
             **state,
             "intent": parsed.get("intent"),
             "entity_name": parsed.get("entity_name"),
             "cardinal_direction": parsed.get("cardinal_direction"),
-            "distance": parsed.get("distance")
+            "distance_filter": parsed.get("distance_filter")
         }
 
 
 # Entity Type Resolver
 def resolve_entity_type(state):
-    
     query = """
     MATCH (n)
     WHERE toLower(n.Name) = toLower($name)
@@ -242,14 +255,14 @@ def resolve_entity_type(state):
     results = graph.query(query, {"name": state["entity_name"]})
 
     types = list(set(r["type"] for r in results))
-    # ✅ FALL 1: one result
+    # ✅ Case 1: one result
     if len(types) == 1:
         return {**state, "source_type": types[0]}
     
     if not results:
         return {**state, "source_type": "District"}  # or None?
 
-    # ✅ FALL 2: several results → LLM
+    # ✅ Case 2: several results → LLM
     prompt = f"""
 You are resolving entity ambiguity in a geographic database.
 
@@ -301,14 +314,14 @@ Return ONLY JSON:
 
     source_type = parsed.get("source_type")
 
-    # fallback falls LLM Müll liefert
+    # fallback
     if source_type not in types:
         source_type = types[0]
-
     return {
         **state,
         "source_type": source_type
     }
+
 # Target Type
 def resolve_target_type(state):
     
@@ -368,7 +381,6 @@ Return ONLY JSON:
     if target_type not in VALID:
         # smart fallback based on direction intuition
         target_type = source_type
-
     return {
         **state,
         "target_type": target_type
@@ -464,6 +476,7 @@ def build_within_down(state):
     query += f"\nRETURN {current}.Name AS result"
 
     return {**state, "cypher_query": query}
+
 # touches
 def build_touches_query(state):
     return {
@@ -486,18 +499,18 @@ def build_relates_query(state):
     where_clauses = []
     rel_props = []
 
-    # Richtung
+    # Cardinal Direction
     if cardinal_direction:
         rel_props.append(f"Spatial_relation: '{cardinal_direction}'")
 
-    # Beziehung bauen
+    # build relation
     rel_filter = ""
     if rel_props:
         rel_filter = "{" + ", ".join(rel_props) + "}"
 
-    # Distanz
+    # Distance
     if distance:
-        where_clauses.append(f"r.Distance_between {distance['op']} {distance['value']}")
+        where_clauses.append(f"r.Distance_between {distance['operator']} {distance['value']}")
 
     where_stmt = ""
     if where_clauses:
@@ -518,6 +531,7 @@ def build_relates_query(state):
         **state,
         "cypher_query": query
     }
+
 # execute query
 def execute_query(state):
     result = graph.query(state["cypher_query"])
@@ -525,6 +539,7 @@ def execute_query(state):
     cleaned = [r["result"] for r in result]
 
     return {**state, "result": cleaned}
+
 # answer
 def verbalize(state):
     prompt = f"""
@@ -538,6 +553,7 @@ Result: {state['result']}
         **state,
         "result": llm.invoke(prompt).content
     }
+
 # build graph
 workflow = StateGraph(AgentState)
 
@@ -579,12 +595,13 @@ workflow.add_edge("execute_query", "verbalize")
 workflow.add_edge("verbalize", END)
 
 compiled_graph = workflow.compile()
-# display graph
-from IPython.display import Image, display
 
+# display graph
+#from IPython.display import Image, display
 # display(Image(compiled_graph.get_graph().draw_mermaid_png()))
 
 # testing
+
 # print(compiled_graph.invoke({
 #     "question": "Which Cities lie in the administrative District of Münster?"
 # }))
@@ -599,6 +616,9 @@ from IPython.display import Image, display
 #     "question": "Which administrative Districts lie next to Düsseldorf?"
 # }))
 
+# print(compiled_graph.invoke({
+#     "question": "Which City lie in a 10 km distance of Selm?"
+# }))
 print(compiled_graph.invoke({
-    "question": "Which City lie in a 10km distance of Selm?"
+    "question": "What is the distance between Bocholt and Siegburg?"
 }))
