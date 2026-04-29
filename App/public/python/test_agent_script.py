@@ -1,5 +1,5 @@
-# Import and Setup
-# Install (if needed)
+# Import und Setup
+# Install (falls nötig)
 # pip install langgraph langchain langchain-openai neo4j
 
 from typing import TypedDict, Literal, Optional, Dict
@@ -8,23 +8,17 @@ from langchain_openai import ChatOpenAI
 from langchain_community.graphs import Neo4jGraph
 
 import os
-
-# API key setup
+# API
 os.environ["OPENAI_API_KEY"] = ""
 
-# Initialize LLM
 llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
 
-# Initialize Neo4j connection
 graph = Neo4jGraph(
     url="neo4j://localhost:7687",
     username="neo4j",
     password="chatwithgermany"
 )
 
-# =========================
-# STATE DEFINITION
-# =========================
 class AgentState(TypedDict):
     # INPUT
     question: str  
@@ -106,7 +100,6 @@ def safe_parse(response: str):
             "entity_name": "",
             "cardinal_direction": None,
             "distance_filter": None
-            "distance_filter": None
         }
 
     # ✅ Mandatory fields
@@ -115,7 +108,6 @@ def safe_parse(response: str):
 
     # ✅ Spatial Queries
     data.setdefault("cardinal_direction", None)
-    data.setdefault("distance_filter", None)
     data.setdefault("distance_filter", None)
 
     # ✅ Normalisation
@@ -129,10 +121,19 @@ def safe_parse(response: str):
         dir_raw = data["cardinal_direction"].lower()
 
         mapping = {
+            # north
             "north": "northern",
+
+            # south
             "south": "southern",
+
+            # east
             "east": "eastern",
+
+            # west
             "west": "western",
+
+            # diagonals
             "northeast": "northeastern",
             "northwest": "northwestern",
             "southeast": "southeastern",
@@ -258,7 +259,6 @@ def resolve_entity_type(state):
     if len(types) == 1:
         return {**state, "source_type": types[0]}
     
-    # fallback if nothing found
     if not results:
         return {**state, "source_type": "District"}  # or None?
 
@@ -309,6 +309,7 @@ Return ONLY JSON:
 """
 
     response = llm.invoke(prompt).content
+
     parsed = safe_parse(response)
 
     source_type = parsed.get("source_type")
@@ -328,33 +329,67 @@ def resolve_target_type(state):
     question = state["question"]
     source_type = state["source_type"]
 
-    # fast path for touches (same level)
+    # ✅ FAST PATH (no LLM needed)
     if intent == "touches":
         return {**state, "target_type": source_type}
 
-    # otherwise LLM
-    prompt = f""" ... """
+    # ✅ LLM for everything else
+    prompt = f"""
+You are determining the TARGET entity type in a geographic query.
+
+Question:
+{question}
+
+Source entity type:
+{source_type}
+
+Hierarchy:
+City < District < AdministrativeDistrict < FederalState
+
+Intent:
+{intent}
+
+Task:
+Determine what type of entities the user is asking for.
+
+Rules:
+- "In which administrative District lies ... → target type = AdministrativeDistrict
+- "In which District lies ... → target type = District
+- "In which federal State lies ... → target type = FederalState
+
+- "Which Cities lie in ..." → target type = City
+- "Which administrative Districts lie in ..." → target type = AdministrativeDistrict
+- "Which Districts lie in ..." → target type = District
+
+- "touches" → same type as source
+- If unclear → choose the most logical level based on hierarchy
+
+Return ONLY JSON:
+{{
+  "target_type": "City | District | AdministrativeDistrict | FederalState"
+}}
+"""
 
     response = llm.invoke(prompt).content
     parsed = safe_parse(response)
 
     target_type = parsed.get("target_type")
 
+    # ✅ fallback safety
     VALID = ["City", "District", "AdministrativeDistrict", "FederalState"]
 
     if target_type not in VALID:
+        # smart fallback based on direction intuition
         target_type = source_type
     return {
         **state,
         "target_type": target_type
     }
 
-# =========================
-# DIRECTION INFERENCE
-# =========================
+# Direction
 def infer_direction(source, target):
     if source not in HIERARCHY or target not in HIERARCHY:
-        return "down"
+        return "down"  # safe fallback
 
     s = HIERARCHY.index(source)
     t = HIERARCHY.index(target)
@@ -374,12 +409,11 @@ def add_direction(state):
         )
     }
 
-# =========================
-# ROUTING
-# =========================
+# Routing
 def select_query_type(state):
     if state["intent"] == "within":
         return f"within_{state['direction']}"
+
     return f"{state['intent']}_action"
 
 # Within
@@ -501,7 +535,9 @@ def build_relates_query(state):
 # execute query
 def execute_query(state):
     result = graph.query(state["cypher_query"])
+
     cleaned = [r["result"] for r in result]
+
     return {**state, "result": cleaned}
 
 # answer
@@ -512,6 +548,7 @@ Turn into natural English:
 Question: {state['question']}
 Result: {state['result']}
 """
+
     return {
         **state,
         "result": llm.invoke(prompt).content
@@ -582,10 +619,6 @@ compiled_graph = workflow.compile()
 # print(compiled_graph.invoke({
 #     "question": "Which City lie in a 10 km distance of Selm?"
 # }))
-# print(compiled_graph.invoke({
-#     "question": "Which City lie in a 10 km distance of Selm?"
-# }))
 print(compiled_graph.invoke({
-    "question": "What is the distance between Bocholt and Siegburg?"
     "question": "What is the distance between Bocholt and Siegburg?"
 }))
