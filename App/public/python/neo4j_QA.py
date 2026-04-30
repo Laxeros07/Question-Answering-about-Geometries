@@ -1,15 +1,17 @@
 import sys
 from langchain_openai import ChatOpenAI
-from langchain.chains import GraphCypherQAChain
+from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
+#from langchain.chains import GraphCypherQAChain
 from langchain_community.graphs import Neo4jGraph
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
+#from langchain.prompts import PromptTemplate
 import getpass
 import os
 import asyncio
 import json
 import re
-
-from langchain.prompts.prompt import PromptTemplate
+from langchain_core.prompts import PromptTemplate
+#from langchain.prompts.prompt import PromptTemplate
 
 # Prompt for Cypher generation with few shot learning examples
 CYPHER_GENERATION_TEMPLATE = """
