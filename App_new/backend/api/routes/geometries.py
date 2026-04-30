@@ -25,6 +25,7 @@ def get_geometries(ids: str = Query(None)):
 
     result = []
 
+    # Return the geometries for the requested IDs
     for geom_id in id_list:
         if geom_id in df.index:
             result.append({

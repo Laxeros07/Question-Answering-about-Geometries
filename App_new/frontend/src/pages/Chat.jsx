@@ -1,134 +1,33 @@
 import PageTitle from "../components/PageTitle";
 import { useRef } from "react";
-import { useState, useEffect } from "react";
-import Map, {
-  findKeysRecursively,
-  loadGeometries,
-  clearGeometries,
-} from "../components/Map";
+import Map, { findKeysRecursively, loadGeometries } from "../components/Map";
+import useChat from "../hooks/useChat";
+import useApiKey from "../hooks/useApiKey";
 
 export default function Chat() {
   const mapInstanceRef = useRef(null);
-  const [apiKey, setApiKey] = useState("");
-  const [showModal, setShowModal] = useState(true);
+  const { apiKey, showModal, setShowModal, setApiKey, saveKey } = useApiKey();
 
-  useEffect(() => {
-    const savedKey = localStorage.getItem("openai_key");
-    // If there already is a key in the local storage, hide the window.
-    if (savedKey) {
-      setApiKey(savedKey);
-      setShowModal(false);
-    }
-  }, []);
+  // Callback function to handle the geodata received from the backend in useChat.js
+  const handleGeoData = (steps) => {
+    let ids = [];
 
-  // API key is stored in the local storage of the browser.
-  const saveKey = () => {
-    if (!apiKey.startsWith("sk-")) {
-      alert("Invalid key format");
-      return;
-    }
-    localStorage.setItem("openai_key", apiKey);
-    setShowModal(false);
-  };
+    steps[1].context.forEach((item) => {
+      findKeysRecursively(item, ids);
+    });
 
-  const [messages, setMessages] = useState([
-    {
-      // Define starting message of the chatbot
-      text: "Hello there! Ask me some questions about the geometry of NRW. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
-      side: "left",
-      time: new Date().toLocaleTimeString(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-
-    // Remove old geometries from the map
-    clearGeometries(mapInstanceRef);
-
-    const question = input;
-    setInput("");
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        text: question,
-        side: "right",
-        time: new Date().toLocaleTimeString(),
-        appeared: false,
-      },
-    ]);
-
-    // Loading animation starts
-    setIsLoading(true);
-
-    try {
-      const res = await fetch("http://localhost:8000/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: question,
-          openAiKey: apiKey,
-        }),
-      });
-
-      var data = await res.json();
-      data = JSON.parse(data.result);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: data.result,
-          side: "left",
-          time: new Date().toLocaleTimeString(),
-          appeared: false,
-        },
-      ]);
-
-      // Intermediate_steps is undefined, when an error occured.
-      if (data.intermediate_steps) {
-        let ids = [];
-        data.intermediate_steps[1].context.forEach((item) => {
-          findKeysRecursively(item, ids);
-        });
-        // Delete duplicates
-        var uniqueIDs = ids.filter(
-          (item, index, self) =>
-            index ===
-            self.findIndex((t) => t.id === item.id && t.name === item.name),
-        );
-        console.log(uniqueIDs);
-        loadGeometries(uniqueIDs, mapInstanceRef);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      //Stop loading animation
-      setIsLoading(false);
-    }
-  };
-
-  // Send message when Enter is pressed
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      sendMessage();
-    }
-  };
-
-  useEffect(() => {
-    const el = document.querySelector(".messages");
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
-
-  useEffect(() => {
-    setMessages((prev) =>
-      prev.map((msg, i) =>
-        i === prev.length - 1 ? { ...msg, appeared: true } : msg,
-      ),
+    // Delete duplicates
+    const uniqueIDs = ids.filter(
+      (item, index, self) =>
+        index ===
+        self.findIndex((t) => t.id === item.id && t.name === item.name),
     );
-  }, [messages.length]);
+
+    loadGeometries(uniqueIDs, mapInstanceRef);
+  };
+
+  const { messages, input, setInput, sendMessage, isLoading, handleKeyDown } =
+    useChat(apiKey, mapInstanceRef, handleGeoData);
 
   return (
     <>

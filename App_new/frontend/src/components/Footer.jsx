@@ -2,18 +2,14 @@ import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
-    <footer className="bg-dark text-center text-muted text-lg-start mt-5">
+    <footer className="bg-dark text-center text-white-50 text-lg-start mt-5">
       <div className="container ms-2 me-2 px-2 mt-2">
         <div className="row">
-          
           <div className="col-2 text-start">
             <h5 className="text-uppercase">Links</h5>
             <ul className="list-unstyled mb-0">
               <li>
-                <Link
-                  className="text-muted text-decoration-none"
-                  to="/info"
-                >
+                <Link className="text-white-50 text-decoration-none" to="/info">
                   Impressum
                 </Link>
               </li>
@@ -39,10 +35,7 @@ export default function Footer() {
                 <i className="bi bi-envelope-at-fill"></i>
               </a>
 
-              <a
-                className="me-4 text-reset"
-                href="tel:+4915901600951"
-              >
+              <a className="me-4 text-reset" href="tel:+4915901600951">
                 <i className="bi bi-phone"></i>
               </a>
             </div>
@@ -70,9 +63,7 @@ export default function Footer() {
         className="text-center p-1 text-white"
         style={{ backgroundColor: "#009036" }}
       >
-        © 2024 by:{" "}
-        <i className="text-white">Shadowfax</i>
-
+        © 2024 by: <i className="text-white">Shadowfax</i>
         <img
           className="img-fluid rounded me-1 d-inline-block align-text-top"
           src="/images/shadowfax.jpg"
