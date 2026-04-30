@@ -1,11 +1,15 @@
 # Import und Setup
-# Install (falls nötig)
+# Install
 # pip install langgraph langchain langchain-openai neo4j
 
 from typing import TypedDict, Literal, Optional, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
 from langchain_community.graphs import Neo4jGraph
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.json import JSON
 
 import os
 # API
@@ -25,7 +29,8 @@ class AgentState(TypedDict):
 
     # INTERPRETATION
     intent: str  
-    entity_name: str  
+    entity_name: str
+    second_entity: Optional[str] 
 
     # ENTITY RESOLUTION
     source_type: str  
@@ -43,6 +48,8 @@ class AgentState(TypedDict):
     #   "value": 10,
     #   "unit": "km"
     # }
+
+    distance_between: bool
 
     # QUERY
     cypher_query: str  
@@ -98,23 +105,19 @@ def safe_parse(response: str):
         return {
             "intent": "within",
             "entity_name": "",
+            "second_entity": None,
             "cardinal_direction": None,
-            "distance_filter": None
+            "distance_filter": None,
+            "distance_between": False
         }
 
-    # ✅ Mandatory fields
+    # defaults
     data.setdefault("intent", "within")
     data.setdefault("entity_name", "")
-
-    # ✅ Spatial Queries
+    data.setdefault("second_entity", None)
     data.setdefault("cardinal_direction", None)
     data.setdefault("distance_filter", None)
-
-    # ✅ Normalisation
-
-    # ensure intent
-    if data["intent"] not in ["within", "touches", "relates"]:
-        data["intent"] = "within"
+    data.setdefault("distance_between", False)
 
     # normalise direction
     if data.get("cardinal_direction"):
@@ -123,16 +126,12 @@ def safe_parse(response: str):
         mapping = {
             # north
             "north": "northern",
-
             # south
             "south": "southern",
-
             # east
             "east": "eastern",
-
             # west
             "west": "western",
-
             # diagonals
             "northeast": "northeastern",
             "northwest": "northwestern",
@@ -173,12 +172,14 @@ def interpret_query(state):
     {{
     "intent": "within | touches | relates",
     "entity_name": "...",
+    "second_entity": "..."
     "cardinal_direction": "northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern | null",
     "distance_filter": {{
         "operator": "< | > | = | <= | >= | null",
         "value": number | null,
         "unit": "km | m | null"
     }}
+    "distance_between": true | false
     }}
 
 
@@ -188,7 +189,9 @@ def interpret_query(state):
     - "touches": geographic neighbors (lies next to, is next to, touches)
     - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
 
-    2. Find out the entity name. The entity name is the name of a place in Germany.
+    2. Find out the entity name(The entity name is the name of a place in Germany):
+    - entity_name = main reference entity
+    - second_entity = ONLY if question compares TWO places
 
     Rules:
     - "lies in", "in which ..." → ALWAYS "within"
@@ -231,6 +234,10 @@ def interpret_query(state):
         - "within", "max", "höchstens" → "<="
         - "exactly", "genau" → "="
 
+        3.4. distance between:
+        - TRUE only if TWO entities are explicitly compared
+        - keywords: "between", "distance from X to Y", "What is the distance.."
+
     """
 
     response = llm.invoke(prompt).content
@@ -239,8 +246,10 @@ def interpret_query(state):
             **state,
             "intent": parsed.get("intent"),
             "entity_name": parsed.get("entity_name"),
+            "second_entity": parsed.get("second_entity"),
             "cardinal_direction": parsed.get("cardinal_direction"),
-            "distance_filter": parsed.get("distance_filter")
+            "distance_filter": parsed.get("distance_filter"),
+            "distance_between": parsed.get("distance_between")
         }
 
 
@@ -282,6 +291,11 @@ Task:
 Pick the MOST appropriate type for the entity in this question.
 
 Rules:
+- If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
+    - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
+    - If "District of" or "the District ..." is in the question → the source type = District
+    - If "federal State of" or "the federal State ..." is in the question → the source type = FederalState
+use them as source type in every case
 - If intent = "within":
     - If a Type ("City | District | AdministrativeDistrict | FederalState") is stated in the question like in the following examples:
         - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
@@ -360,6 +374,9 @@ Rules:
 - "Which Cities lie in ..." → target type = City
 - "Which administrative Districts lie in ..." → target type = AdministrativeDistrict
 - "Which Districts lie in ..." → target type = District
+- "Which Districts lie in the administrative District of ..." → target type = District
+
+- Be careful with the types 'District' and 'AdministrativeDistrict', only take 'AdministrativeDistrict' if the question includes the word "administrative".
 
 - "touches" → same type as source
 - If unclear → choose the most logical level based on hierarchy
@@ -443,7 +460,20 @@ def build_within_up(state):
 
         current = next_var
 
-    query += f"\nRETURN {current}.Name AS result"
+    query += f"""
+    WITH start, collect(DISTINCT {{
+        id: {current}.ID,
+        name: {current}.Name
+    }}) AS target
+
+    RETURN {{
+        start: {{
+            id: start.ID,
+            name: start.Name
+        }},
+        target: target
+    }} AS result
+    """
 
     return {**state, "cypher_query": query}
 
@@ -461,7 +491,6 @@ def build_within_down(state):
 
     for i in range(start, end, -1):
         lower = HIERARCHY[i - 1]
-
         next_var = f"n{i}"
 
         query += f"""
@@ -473,7 +502,20 @@ def build_within_down(state):
 
         current = next_var
 
-    query += f"\nRETURN {current}.Name AS result"
+    query += f"""
+    WITH start, collect(DISTINCT {{
+        id: {current}.ID,
+        name: {current}.Name
+    }}) AS target
+
+    RETURN {{
+        start: {{
+            id: start.ID,
+            name: start.Name
+        }},
+        target: target
+    }} AS result
+    """
 
     return {**state, "cypher_query": query}
 
@@ -488,33 +530,46 @@ def build_touches_query(state):
         <-[:touches]-(:Geometry)
         <-[:hasFootprint]-(neighbor:{state['source_type']})
 
-        RETURN DISTINCT neighbor.Name AS result
+        WITH start, collect(DISTINCT {{
+            id: neighbor.ID,
+            name: neighbor.Name
+        }}) AS target
+
+        RETURN {{
+            start: {{
+                id: start.ID,
+                name: start.Name
+            }},
+            target: target
+        }} AS result
         """
     }
 # relates
-def build_relates_query(state):
-    cardinal_direction = state.get("cardinal_direction")
-    distance = state.get("distance_filter")
 
-    where_clauses = []
-    rel_props = []
+def select_relates_type(state):
+    if state.get("distance_between"):
+        return "distance_between"
 
-    # Cardinal Direction
-    if cardinal_direction:
-        rel_props.append(f"Spatial_relation: '{cardinal_direction}'")
+    if state.get("distance_filter"):
+        return "distance_filter"
 
-    # build relation
+    if state.get("cardinal_direction"):
+        return "direction"
+
+    return "direction"
+
+def add_relates_type(state):
+    return {
+        **state,
+        "relates_type": select_relates_type(state)
+    }
+
+def build_direction_query(state):
+    direction = state.get("cardinal_direction")
+
     rel_filter = ""
-    if rel_props:
-        rel_filter = "{" + ", ".join(rel_props) + "}"
-
-    # Distance
-    if distance:
-        where_clauses.append(f"r.Distance_between {distance['operator']} {distance['value']}")
-
-    where_stmt = ""
-    if where_clauses:
-        where_stmt = "WHERE " + " AND ".join(where_clauses)
+    if direction:
+        rel_filter = f"{{Spatial_relation: '{direction}'}}"
 
     query = f"""
     MATCH 
@@ -523,10 +578,86 @@ def build_relates_query(state):
     -[r:relates {rel_filter}]->(g2:Geometry)
     <-[:hasFootprint]-(other:{state['source_type']})
 
-    {where_stmt}
+    WITH start, collect(DISTINCT {{
+        id: other.ID,
+        name: other.Name
+    }}) AS target
 
-    RETURN DISTINCT other.Name AS result
+    RETURN {{
+        start: {{
+            id: start.ID,
+            name: start.Name
+        }},
+        target: target
+    }} AS result
     """
+
+    return {
+        **state,
+        "cypher_query": query
+    }
+
+def build_distance_filter_query(state):
+    distance = state.get("distance_filter")
+
+    op = distance.get("operator")
+    value = distance.get("value")
+
+    query = f"""
+    MATCH 
+    (start:{state['source_type']} {{Name: '{state['entity_name']}'}})
+    -[:hasFootprint]->(g1:Geometry)
+    -[r:relates]->(g2:Geometry)
+    <-[:hasFootprint]-(other:{state['source_type']})
+
+    WHERE r.Distance_between {op} {value}
+
+    WITH start, collect(DISTINCT {{
+        id: other.ID,
+        name: other.Name
+    }}) AS target
+
+    RETURN {{
+        start: {{
+            id: start.ID,
+            name: start.Name
+        }},
+        target: target
+    }} AS result
+    """
+
+    return {
+        **state,
+        "cypher_query": query
+    }
+
+# distance between
+def build_distance_between_query(state):
+    e1 = state["entity_name"]
+    e2 = state["second_entity"]
+
+    query = f"""
+    MATCH 
+    (a:{state['source_type']} {{Name: '{e1}'}})
+    -[:hasFootprint]->(g1:Geometry)
+    -[r:relates]->(g2:Geometry)
+    <-[:hasFootprint]-(b:{state['source_type']} {{Name: '{e2}'}})
+
+    WITH a,r, collect(DISTINCT {{
+        id: b.ID,
+        name: b.Name
+    }}) AS target
+
+    RETURN {{
+        start: {{
+            id: a.ID,
+            name: a.Name
+        }},
+        target: target,
+        distance: r.Distance_between
+    }} AS result
+    """
+
     return {
         **state,
         "cypher_query": query
@@ -547,6 +678,11 @@ Turn into natural English:
 
 Question: {state['question']}
 Result: {state['result']}
+
+Rules:
+- If the result is a number, it is a Distance in m.
+- The Result is never a question
+- Put only the result in the Answer NEVER the question
 """
 
     return {
@@ -565,7 +701,12 @@ workflow.add_node("add_direction", add_direction)
 workflow.add_node("build_within_up", build_within_up)
 workflow.add_node("build_within_down", build_within_down)
 workflow.add_node("build_touches_query", build_touches_query)
-workflow.add_node("build_relates_query", build_relates_query)
+workflow.add_node("add_relates_type", add_relates_type)
+
+#relates
+workflow.add_node("build_direction_query", build_direction_query)
+workflow.add_node("build_distance_filter_query", build_distance_filter_query)
+workflow.add_node("build_distance_between_query", build_distance_between_query)
 
 workflow.add_node("execute_query", execute_query)
 workflow.add_node("verbalize", verbalize)
@@ -582,14 +723,27 @@ workflow.add_conditional_edges(
         "within_up": "build_within_up",
         "within_down": "build_within_down",
         "touches_action": "build_touches_query",
-        "relates_action": "build_relates_query"
+        "relates_action": "add_relates_type"
+    }
+)
+
+# relates sub-routing
+workflow.add_conditional_edges(
+    "add_relates_type", 
+    select_relates_type,
+    {
+        "direction": "build_direction_query",
+        "distance_filter": "build_distance_filter_query",
+        "distance_between": "build_distance_between_query"
     }
 )
 
 workflow.add_edge("build_within_up", "execute_query")
 workflow.add_edge("build_within_down", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
-workflow.add_edge("build_relates_query", "execute_query")
+workflow.add_edge("build_direction_query", "execute_query")
+workflow.add_edge("build_distance_filter_query", "execute_query")
+workflow.add_edge("build_distance_between_query", "execute_query")
 
 workflow.add_edge("execute_query", "verbalize")
 workflow.add_edge("verbalize", END)
@@ -597,28 +751,46 @@ workflow.add_edge("verbalize", END)
 compiled_graph = workflow.compile()
 
 # display graph
-#from IPython.display import Image, display
-# display(Image(compiled_graph.get_graph().draw_mermaid_png()))
+# pip install pillow
+# pip install pygraphviz
+img_bytes = compiled_graph.get_graph().draw_mermaid_png()
 
-# testing
+with open("graph.png", "wb") as f:
+    f.write(img_bytes)
 
-# print(compiled_graph.invoke({
-#     "question": "Which Cities lie in the administrative District of Münster?"
-# }))
+console = Console()
 
-# print(compiled_graph.invoke({
-#     "question": "In which federal State lies Selm?"
-# }))
-# compiled_graph.invoke({
-#     "question": "What Cities lie in Rhein-Sieg-Kreis?"
-# })
-# print(compiled_graph.invoke({
-#     "question": "Which administrative Districts lie next to Düsseldorf?"
-# }))
+def fancy_print(result):
+    console.print(Panel.fit(
+        f"[bold cyan]QUESTION[/bold cyan]\n{result.get('question')}",
+        border_style="cyan"
+    ))
 
-# print(compiled_graph.invoke({
-#     "question": "Which City lie in a 10 km distance of Selm?"
-# }))
-print(compiled_graph.invoke({
-    "question": "What is the distance between Bocholt and Siegburg?"
-}))
+    console.print(Panel.fit(
+        f"[bold green]ANSWER[/bold green]\n{result.get('result')}",
+        border_style="green"
+    ))
+
+    # Optional: komplette Rohdaten schön als JSON
+    console.print("[bold yellow]FULL OUTPUT[/bold yellow]")
+    console.print(JSON.from_data(result))
+
+    console.print("\n" + "═"*80 + "\n")
+
+
+def run_all():
+    questions = [
+        "Which Cities lie in the administrative District of Münster?",
+        "In which federal State lies Selm?",
+        "What Cities lie in Rhein-Sieg-Kreis?",
+        "Which administrative Districts lie next to Düsseldorf?",
+        "Which City lie in a 10 km distance of Selm?",
+        "What is the distance between Bocholt and Siegburg?",
+        "Which Cities lie northern of Münster?"
+    ]
+
+    for q in questions:
+        result = compiled_graph.invoke({"question": q})
+        fancy_print(result)
+
+run_all()

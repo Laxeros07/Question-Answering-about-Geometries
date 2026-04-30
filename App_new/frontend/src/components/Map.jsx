@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
+import { getColor } from "../utils/map";
 
-export default function Map() {
+export default function Map({ mapInstanceRef }) {
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -12,6 +13,21 @@ export default function Map() {
       [51.51588878700843, 7.475327389339492],
       7,
     );
+
+    // To make the map globally
+    mapInstanceRef.current = map;
+
+    const fsLayer = L.featureGroup().addTo(map);
+    const adLayer = L.featureGroup().addTo(map);
+    const districtLayer = L.featureGroup().addTo(map);
+    const cityLayer = L.featureGroup().addTo(map);
+
+    mapInstanceRef.current.layers = {
+      cityLayer,
+      districtLayer,
+      adLayer,
+      fsLayer,
+    };
 
     // Base Layer
     const osm = L.tileLayer(
@@ -25,13 +41,27 @@ export default function Map() {
 
     // Layer Control
     const baseMaps = { OpenStreetMap: osm };
-    L.control.layers(baseMaps).addTo(map);
+    const overlayMaps = {
+      Cities: cityLayer,
+      Districts: districtLayer,
+      "Administrative Districts": adLayer,
+      "Federal States": fsLayer,
+    };
 
-    // Feature Groups
-    const fsLayer = L.featureGroup().addTo(map);
-    const adLayer = L.featureGroup().addTo(map);
-    const districtLayer = L.featureGroup().addTo(map);
-    const cityLayer = L.featureGroup().addTo(map);
+    L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+    // Fixed z-index for layers
+    map.createPane("F");
+    map.getPane("F").style.zIndex = 400;
+
+    map.createPane("A");
+    map.getPane("A").style.zIndex = 410;
+
+    map.createPane("D");
+    map.getPane("D").style.zIndex = 420;
+
+    map.createPane("C");
+    map.getPane("C").style.zIndex = 430;
 
     // Legend
     const legend = L.control({ position: "bottomleft" });
@@ -49,7 +79,13 @@ export default function Map() {
       div.innerHTML =
         "<strong>Federal Levels</strong><br>" +
         categories
-          .map((c) => `<i style="color:${getColor(c)}">●</i> ${c}`)
+          .map(
+            (c) =>
+              '<i class="bi bi-circle-fill" style="color:' +
+              getColor(c) +
+              '" ></i> ' +
+              (c ? c : "+"),
+          )
           .join("<br>");
 
       div.style.backgroundColor = "rgba(255,255,255,0.7)";
@@ -58,23 +94,11 @@ export default function Map() {
 
     legend.addTo(map);
 
-    function getColor(d) {
-      return d === "City"
-        ? "#3A27D0"
-        : d === "District"
-          ? "#f04b23"
-          : d === "Administrative district"
-            ? "#ffcc00"
-            : d === "Federal state"
-              ? "#469F4E"
-              : "#ff7f00";
-    }
-
     // Cleanup beim Unmount (WICHTIG!)
     return () => {
       map.remove();
     };
-  }, []);
+  }, [mapInstanceRef]);
 
   return <div ref={mapRef} style={{ height: "470px", width: "100%" }} />;
 }

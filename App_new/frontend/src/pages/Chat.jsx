@@ -1,106 +1,34 @@
 import PageTitle from "../components/PageTitle";
+import { useRef } from "react";
 import Map from "../components/Map";
-import { useRef, useState, useEffect } from "react";
+import { loadGeometries, findKeysRecursively } from "../utils/map";
+import useChat from "../hooks/useChat";
+import useApiKey from "../hooks/useApiKey";
 
 export default function Chat() {
-  const [apiKey, setApiKey] = useState("");
-  const [showModal, setShowModal] = useState(true);
+  const mapInstanceRef = useRef(null);
+  const { apiKey, showModal, setShowModal, setApiKey, saveKey } = useApiKey();
 
-  useEffect(() => {
-    const savedKey = localStorage.getItem("openai_key");
+  // Callback function to handle the geodata received from the backend in useChat.js
+  const handleGeoData = (steps) => {
+    let ids = [];
 
-    if (savedKey) {
-      setApiKey(savedKey);
-      setShowModal(false);
-    }
-  }, []);
+    steps[1].context.forEach((item) => {
+      findKeysRecursively(item, ids);
+    });
 
-  const saveKey = () => {
-    if (!apiKey.startsWith("sk-")) {
-      alert("Invalid key format");
-      return;
-    }
-    localStorage.setItem("openai_key", apiKey);
-    setShowModal(false);
-  };
-
-  const [messages, setMessages] = useState([
-    {
-      text: "Hello there! Ask me some questions about the geometry of NRW. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
-      side: "left",
-      time: new Date().toLocaleTimeString(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-
-    const question = input;
-    setInput("");
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        text: question,
-        side: "right",
-        time: new Date().toLocaleTimeString(),
-        appeared: false,
-      },
-    ]);
-
-    setIsLoading(true);
-
-    try {
-      const res = await fetch("http://localhost:8000/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: question,
-          openAiKey: apiKey,
-        }),
-      });
-
-      const data = await res.json();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: data.result,
-          side: "left",
-          time: new Date().toLocaleTimeString(),
-          appeared: false,
-        },
-      ]);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      sendMessage();
-    }
-  };
-
-  useEffect(() => {
-    const el = document.querySelector(".messages");
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
-
-  useEffect(() => {
-    setMessages((prev) =>
-      prev.map((msg, i) =>
-        i === prev.length - 1 ? { ...msg, appeared: true } : msg,
-      ),
+    // Delete duplicates
+    const uniqueIDs = ids.filter(
+      (item, index, self) =>
+        index ===
+        self.findIndex((t) => t.id === item.id && t.name === item.name),
     );
-  }, [messages.length]);
+
+    loadGeometries(uniqueIDs, mapInstanceRef.current);
+  };
+
+  const { messages, input, setInput, sendMessage, isLoading, handleKeyDown } =
+    useChat(apiKey, mapInstanceRef, handleGeoData);
 
   return (
     <>
@@ -218,7 +146,7 @@ export default function Chat() {
               </div>
 
               <div className="panel-group">
-                <Map />
+                <Map mapInstanceRef={mapInstanceRef} />
               </div>
             </div>
           </div>
