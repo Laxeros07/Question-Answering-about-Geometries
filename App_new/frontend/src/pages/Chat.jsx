@@ -1,6 +1,7 @@
 import PageTitle from "../components/PageTitle";
 import { useRef } from "react";
-import Map, { findKeysRecursively, loadGeometries } from "../components/Map";
+import Map from "../components/Map";
+import { loadGeometries, findKeysRecursively } from "../utils/map";
 import useChat from "../hooks/useChat";
 import useApiKey from "../hooks/useApiKey";
 
@@ -23,7 +24,7 @@ export default function Chat() {
         self.findIndex((t) => t.id === item.id && t.name === item.name),
     );
 
-    loadGeometries(uniqueIDs, mapInstanceRef);
+    loadGeometries(uniqueIDs, mapInstanceRef.current);
   };
 
   const { messages, input, setInput, sendMessage, isLoading, handleKeyDown } =

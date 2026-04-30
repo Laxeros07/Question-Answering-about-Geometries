@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { clearGeometries } from "../components/Map";
+import { clearGeometries } from "../utils/map";
 
 export default function useChat(apiKey, mapInstanceRef, onGeoData) {
   const [messages, setMessages] = useState([
