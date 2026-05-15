@@ -1,15 +1,13 @@
 import sys
 from langchain_openai import ChatOpenAI
-from langchain.chains import GraphCypherQAChain
+from langchain_neo4j import GraphCypherQAChain
 from langchain_community.graphs import Neo4jGraph
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 import getpass
 import os
 import asyncio
 import json
 import re
-
-from langchain.prompts.prompt import PromptTemplate
 
 def create_chain(openAiKey):
 
