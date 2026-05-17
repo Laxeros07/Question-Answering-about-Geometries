@@ -9,6 +9,7 @@ import asyncio
 import json
 import re
 
+
 def create_chain(openAiKey):
 
     # Prompt for Cypher generation with few shot learning examples
