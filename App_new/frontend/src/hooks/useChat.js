@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { clearGeometries } from "../utils/map";
-import { API_BASE_URL } from "./constants";
+import { API_BASE_URL } from "../utils/constants";
 
 export default function useChat(apiKey, mapInstanceRef, onGeoData) {
   const [messages, setMessages] = useState([
