@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { clearGeometries } from "../utils/map";
+import { API_BASE_URL } from "./constants";
 
 export default function useChat(apiKey, mapInstanceRef, onGeoData) {
   const [messages, setMessages] = useState([
@@ -43,7 +44,7 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
 
     try {
       // Triggers the question-answering process in the backend and waits for the response
-      const res = await fetch("http://localhost:8000/api/chat", {
+      const res = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

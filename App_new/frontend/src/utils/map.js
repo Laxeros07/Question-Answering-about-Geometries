@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { API_BASE_URL } from "./constants";
 
 /**
  * Returns the color for a given geometry type.
@@ -123,7 +124,7 @@ export async function fetchGeometries(searchIDs) {
     }
   });
   const res = await fetch(
-    "http://localhost:8000/api/geometries?ids=" + ids.join(","),
+    `${API_BASE_URL}/api/geometries?ids=` + ids.join(","),
   );
   const rows = await res.json();
 
