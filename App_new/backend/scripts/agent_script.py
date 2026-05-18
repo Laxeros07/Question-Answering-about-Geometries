@@ -12,16 +12,22 @@ from rich.panel import Panel
 from rich.json import JSON
 
 import os
-# API
-os.environ["OPENAI_API_KEY"] = ""
 
-llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+llm = None
+graph = None
 
-graph = Neo4jGraph(
-    url="neo4j://localhost:7687",
-    username="neo4j",
-    password="chatwithgermany"
-)
+
+def build_chain(apiKey):
+    global llm, graph
+    os.environ["OPENAI_API_KEY"] = apiKey
+
+    llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+    graph = Neo4jGraph(
+        url="neo4j://localhost:7687",
+        username="neo4j",
+        password="chatwithgermany"
+    )
+
 
 class AgentState(TypedDict):
     # INPUT
@@ -753,10 +759,10 @@ compiled_graph = workflow.compile()
 # display graph
 # pip install pillow
 # pip install pygraphviz
-img_bytes = compiled_graph.get_graph().draw_mermaid_png()
+#img_bytes = compiled_graph.get_graph().draw_mermaid_png()
 
-with open("graph.png", "wb") as f:
-    f.write(img_bytes)
+#with open("graph.png", "wb") as f:
+#    f.write(img_bytes)
 
 console = Console()
 
@@ -777,20 +783,34 @@ def fancy_print(result):
 
     console.print("\n" + "═"*80 + "\n")
 
+def run_question(question: str, apiKey: str):
+    """Initialisiert LLM und Neo4j und führt die Frage aus."""
+    build_chain(apiKey)
+    return compiled_graph.invoke({"question": question})
 
-def run_all():
-    questions = [
-        "Which Cities lie in the administrative District of Münster?",
-        "In which federal State lies Selm?",
-        "What Cities lie in Rhein-Sieg-Kreis?",
-        "Which administrative Districts lie next to Düsseldorf?",
-        "Which City lie in a 10 km distance of Selm?",
-        "What is the distance between Bocholt and Siegburg?",
-        "Which Cities lie northern of Münster?"
-    ]
 
-    for q in questions:
-        result = compiled_graph.invoke({"question": q})
+def run_all(question: str, apiKey: str):
+    return run_question(question, apiKey)
+
+
+if __name__ == "__main__":
+    #questions = [
+    #    "Which Cities lie in the administrative District of Münster?",
+    #    "In which federal State lies Selm?",
+    #    "What Cities lie in Rhein-Sieg-Kreis?",
+    #    "Which administrative Districts lie next to Düsseldorf?",
+    #    "Which City lie in a 10 km distance of Selm?",
+    #    "What is the distance between Bocholt and Siegburg?",
+    #    "Which Cities lie northern of Münster?"
+    #]
+
+    #for q in questions:
+    #    result = compiled_graph.invoke({"question": q})
+    #    fancy_print(result)
+    example_question = "Which Cities lie in the administrative District of Münster?"
+    example_api_key = os.getenv("OPENAI_API_KEY", "")
+    if example_api_key:
+        result = run_question(example_question, example_api_key)
         fancy_print(result)
-
-run_all()
+    else:
+        print("Bitte OPENAI_API_KEY setzen, bevor das Skript direkt ausgeführt wird.")
