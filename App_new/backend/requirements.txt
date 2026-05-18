@@ -5,6 +5,9 @@ langchain-core
 langchain-community
 langchain-neo4j
 langchain-openai
+langgraph
+rich
+openai
 neo4j
 python-dotenv
 pydantic
