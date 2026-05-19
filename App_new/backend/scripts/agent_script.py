@@ -6,6 +6,7 @@ from typing import TypedDict, Literal, Optional, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
 from langchain_community.graphs import Neo4jGraph
+from langchain_neo4j import Neo4jGraph
 
 from rich.console import Console
 from rich.panel import Panel
