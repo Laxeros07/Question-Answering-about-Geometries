@@ -43,7 +43,7 @@ class AgentState(TypedDict):
     target_type: str  
 
     # HIERARCHY
-    inheritance: str   # "up" | "down" | "same"
+    inheritance: str   # "super_class" | "sub_class" | "same"
 
     # 🌍 SPATIAL
     cardinal_direction: Optional[str]   # "north" | "south" | "east" | "west" | None
@@ -415,15 +415,15 @@ def add_inheritance(state):
     target = state["target_type"]
     
     if source not in HIERARCHY or target not in HIERARCHY:
-        inheritance = "down"  # safe fallback
+        inheritance = "sub_class"  # safe fallback
     else:
         s = HIERARCHY.index(source)
         t = HIERARCHY.index(target)
 
         if s > t:
-            inheritance = "down"
+            inheritance = "sub_class"
         elif s < t:
-            inheritance = "up"
+            inheritance = "super_class"
         else:
             inheritance = "same"
     return {
@@ -439,7 +439,7 @@ def select_query_type(state):
     return f"{state['intent']}_action"
 
 # Within
-def build_within_up(state):
+def build_within_super_class(state):
     source = state["source_type"]
     target = state["target_type"]
     name = state["entity_name"]
@@ -482,7 +482,7 @@ def build_within_up(state):
 
     return {**state, "cypher_query": query}
 
-def build_within_down(state):
+def build_within_sub_class(state):
     source = state["source_type"]
     target = state["target_type"]
     name = state["entity_name"]
@@ -706,8 +706,8 @@ workflow.add_node("resolve_entity_type", resolve_entity_type)
 workflow.add_node("resolve_target_type", resolve_target_type)
 workflow.add_node("add_inheritance", add_inheritance)
 
-workflow.add_node("build_within_up", build_within_up)
-workflow.add_node("build_within_down", build_within_down)
+workflow.add_node("build_within_super_class", build_within_super_class)
+workflow.add_node("build_within_sub_class", build_within_sub_class)
 workflow.add_node("build_touches_query", build_touches_query)
 workflow.add_node("add_relates_type", add_relates_type)
 
@@ -728,8 +728,8 @@ workflow.add_conditional_edges(
     "add_inheritance",
     select_query_type,
     {
-        "within_up": "build_within_up",
-        "within_down": "build_within_down",
+        "within_super_class": "build_within_super_class",
+        "within_sub_class": "build_within_sub_class",
         "touches_action": "build_touches_query",
         "relates_action": "add_relates_type"
     }
@@ -746,8 +746,8 @@ workflow.add_conditional_edges(
     }
 )
 
-workflow.add_edge("build_within_up", "execute_query")
-workflow.add_edge("build_within_down", "execute_query")
+workflow.add_edge("build_within_super_class", "execute_query")
+workflow.add_edge("build_within_sub_class", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
 workflow.add_edge("build_direction_query", "execute_query")
 workflow.add_edge("build_distance_filter_query", "execute_query")
