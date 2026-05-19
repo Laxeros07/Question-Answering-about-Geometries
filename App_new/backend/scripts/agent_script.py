@@ -35,7 +35,7 @@ def build_chain(apiKey):
 # Pydantic and llm_with_structured_output
 
 relationship_description = """
-Classify the question into one of these intents:
+Classify the question into one of these spatial_relationships:
     - "within": hierarchical containment (lies in, belongs to, is in)
     - "touches": geographic neighbors (lies next to, is next to, touches)
     - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
@@ -70,7 +70,7 @@ hierachy_assignment_description = """
     - Assign the entities to one of the following hierarchies:
     City < District < AdministrativeDistrict < FederalState
 
-    - Return the answer as a list of strings of the format entity:hierarchy
+    - Return the answer as a list of Dict of the format [entity:hierarchy]
 
     Rules:
     - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
@@ -119,6 +119,7 @@ class AgentState(TypedDict):
     # INPUT
     question: str
 
+    # Parameter
     language: str
     spatial_relationship: str
     cardinal_direction: str
@@ -129,6 +130,7 @@ class AgentState(TypedDict):
     target_type: str
 
     # OUTPUT
+    cypher_query: str
     result: str
 
 # Hierarchy
@@ -160,7 +162,7 @@ def interpret_query(state):
 
 # Inheritance
 def add_inheritance(state):
-    source = state["source_type"]
+    source = state["hierarchy"][0].split(":")[1]
     target = state["target_type"]
     
     if source not in HIERARCHY or target not in HIERARCHY:
@@ -182,16 +184,16 @@ def add_inheritance(state):
 
 # Routing
 def select_query_type(state):
-    if state["intent"] == "within":
+    if state["spatial_relationship"] == "within":
         return f"within_{state['inheritance']}"
 
-    return f"{state['intent']}_action"
+    return f"{state['spatial_relationship']}_action"
 
 # Within
 def build_within_super_class(state):
-    source = state["source_type"]
+    source = state["hierarchy"][0].split(":")[1]
     target = state["target_type"]
-    name = state["entity_name"]
+    name = state["spatial_entities"][0]
 
     start = HIERARCHY.index(source)
     end = HIERARCHY.index(target)
@@ -232,9 +234,9 @@ def build_within_super_class(state):
     return {**state, "cypher_query": query}
 
 def build_within_sub_class(state):
-    source = state["source_type"]
+    source = state["hierarchy"][0].split(":")[1]
     target = state["target_type"]
-    name = state["entity_name"]
+    name = state["spatial_entities"][0]
 
     start = HIERARCHY.index(source)
     end = HIERARCHY.index(target)
@@ -279,10 +281,10 @@ def build_touches_query(state):
         **state,
         "cypher_query": f"""
         MATCH 
-        (start:{state['source_type']} {{Name: '{state['entity_name']}'}})
+        (start:{state["hierarchy"][0].split(":")[1]} {{Name: '{state["spatial_entities"][0]}'}})
         -[:hasFootprint]->(:Geometry)
         <-[:touches]-(:Geometry)
-        <-[:hasFootprint]-(neighbor:{state['source_type']})
+        <-[:hasFootprint]-(neighbor:{state["hierarchy"][0].split(":")[1]})
 
         WITH start, collect(DISTINCT {{
             id: neighbor.ID,
@@ -327,10 +329,10 @@ def build_direction_query(state):
 
     query = f"""
     MATCH 
-    (start:{state['source_type']} {{Name: '{state['entity_name']}'}})
+    (start:{state["hierarchy"][0].split(":")[1]} {{Name: '{state["spatial_entities"][0]}'}})
     -[:hasFootprint]->(g1:Geometry)
     -[r:relates {rel_filter}]->(g2:Geometry)
-    <-[:hasFootprint]-(other:{state['source_type']})
+    <-[:hasFootprint]-(other:{state["hierarchy"][0].split(":")[1]})
 
     WITH start, collect(DISTINCT {{
         id: other.ID,
@@ -359,10 +361,10 @@ def build_radius_query(state):
 
     query = f"""
     MATCH 
-    (start:{state['source_type']} {{Name: '{state['entity_name']}'}})
+    (start:{state["hierarchy"][0].split(":")[1]} {{Name: '{state["spatial_entities"][0]}'}})
     -[:hasFootprint]->(g1:Geometry)
     -[r:relates]->(g2:Geometry)
-    <-[:hasFootprint]-(other:{state['source_type']})
+    <-[:hasFootprint]-(other:{state["hierarchy"][0].split(":")[1]})
 
     WHERE r.Distance_between {op} {value}
 
@@ -387,15 +389,15 @@ def build_radius_query(state):
 
 # distance between
 def build_distance_between_query(state):
-    e1 = state["entity_name"]
-    e2 = state["second_entity"]
+    e1 = state["spatial_entities"][0]
+    e2 = state["spatial_entities"][1]
 
     query = f"""
     MATCH 
-    (a:{state['source_type']} {{Name: '{e1}'}})
+    (a:{state["hierarchy"][0].split(":")[1]} {{Name: '{e1}'}})
     -[:hasFootprint]->(g1:Geometry)
     -[r:relates]->(g2:Geometry)
-    <-[:hasFootprint]-(b:{state['source_type']} {{Name: '{e2}'}})
+    <-[:hasFootprint]-(b:{state["hierarchy"][0].split(":")[1]} {{Name: '{e2}'}})
 
     WITH a,r, collect(DISTINCT {{
         id: b.ID,
@@ -554,7 +556,7 @@ if __name__ == "__main__":
     #for q in questions:
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
-    example_question = "Which Cities lie in the administrative District of Münster?"
+    example_question = "What is the distance between Bocholt and Siegburg?"
     example_api_key = ""
     if example_api_key:
         result = run_question(example_question, example_api_key)
