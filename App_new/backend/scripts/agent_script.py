@@ -43,7 +43,7 @@ class AgentState(TypedDict):
     target_type: str  
 
     # HIERARCHY
-    direction: str   # "up" | "down" | "same"
+    inheritance: str   # "up" | "down" | "same"
 
     # 🌍 SPATIAL
     cardinal_direction: Optional[str]   # "north" | "south" | "east" | "west" | None
@@ -409,33 +409,32 @@ Return ONLY JSON:
         "target_type": target_type
     }
 
-# Direction
-def infer_direction(source, target):
+# Inheritance
+def add_inheritance(state):
+    source = state["source_type"]
+    target = state["target_type"]
+    
     if source not in HIERARCHY or target not in HIERARCHY:
-        return "down"  # safe fallback
+        inheritance = "down"  # safe fallback
+    else:
+        s = HIERARCHY.index(source)
+        t = HIERARCHY.index(target)
 
-    s = HIERARCHY.index(source)
-    t = HIERARCHY.index(target)
-
-    if s > t:
-        return "down"
-    if s < t:
-        return "up"
-    return "same"
-
-def add_direction(state):
+        if s > t:
+            inheritance = "down"
+        elif s < t:
+            inheritance = "up"
+        else:
+            inheritance = "same"
     return {
         **state,
-        "direction": infer_direction(
-            state["source_type"],
-            state["target_type"]
-        )
+        "inheritance": inheritance
     }
 
 # Routing
 def select_query_type(state):
     if state["intent"] == "within":
-        return f"within_{state['direction']}"
+        return f"within_{state['inheritance']}"
 
     return f"{state['intent']}_action"
 
@@ -690,10 +689,13 @@ Rules:
 - The Result is never a question
 - Put only the result in the Answer NEVER the question
 """
-
     return {
         **state,
-        "result": llm.invoke(prompt).content
+        "result": {
+            "verbalized": llm.invoke(prompt).content,
+            "start": state["result"][0]["start"],
+            "target": state["result"][0]["target"],
+        }
     }
 
 # build graph
@@ -702,7 +704,7 @@ workflow = StateGraph(AgentState)
 workflow.add_node("interpret_query", interpret_query)
 workflow.add_node("resolve_entity_type", resolve_entity_type)
 workflow.add_node("resolve_target_type", resolve_target_type)
-workflow.add_node("add_direction", add_direction)
+workflow.add_node("add_inheritance", add_inheritance)
 
 workflow.add_node("build_within_up", build_within_up)
 workflow.add_node("build_within_down", build_within_down)
@@ -720,10 +722,10 @@ workflow.add_node("verbalize", verbalize)
 workflow.add_edge(START, "interpret_query")
 workflow.add_edge("interpret_query", "resolve_entity_type")
 workflow.add_edge("resolve_entity_type", "resolve_target_type")
-workflow.add_edge("resolve_target_type", "add_direction")
+workflow.add_edge("resolve_target_type", "add_inheritance")
 
 workflow.add_conditional_edges(
-    "add_direction",
+    "add_inheritance",
     select_query_type,
     {
         "within_up": "build_within_up",
@@ -773,7 +775,7 @@ def fancy_print(result):
     ))
 
     console.print(Panel.fit(
-        f"[bold green]ANSWER[/bold green]\n{result.get('result')}",
+        f"[bold green]ANSWER[/bold green]\n{result.get('result')['verbalized']}",
         border_style="green"
     ))
 
@@ -784,7 +786,7 @@ def fancy_print(result):
     console.print("\n" + "═"*80 + "\n")
 
 def run_question(question: str, apiKey: str):
-    """Initialisiert LLM und Neo4j und führt die Frage aus."""
+    """Initialize LLM and Neo4j and execute the question."""
     build_chain(apiKey)
     return compiled_graph.invoke({"question": question})
 
