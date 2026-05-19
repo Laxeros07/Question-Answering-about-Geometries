@@ -48,7 +48,7 @@ class AgentState(TypedDict):
     # 🌍 SPATIAL
     cardinal_direction: Optional[str]   # "north" | "south" | "east" | "west" | None
 
-    distance_filter: Optional[Dict]    
+    radius: Optional[Dict]    
     # {
     #   "operator": "<", ">", "<=", ">=", "="
     #   "value": 10,
@@ -113,7 +113,7 @@ def safe_parse(response: str):
             "entity_name": "",
             "second_entity": None,
             "cardinal_direction": None,
-            "distance_filter": None,
+            "radius": None,
             "distance_between": False
         }
 
@@ -122,7 +122,7 @@ def safe_parse(response: str):
     data.setdefault("entity_name", "")
     data.setdefault("second_entity", None)
     data.setdefault("cardinal_direction", None)
-    data.setdefault("distance_filter", None)
+    data.setdefault("radius", None)
     data.setdefault("distance_between", False)
 
     # normalise direction
@@ -148,23 +148,23 @@ def safe_parse(response: str):
         data["cardinal_direction"] = mapping.get(dir_raw, dir_raw)
 
     # ensure distance 
-    if data.get("distance_filter"):
-        df = data["distance_filter"]
+    if data.get("radius"):
+        df = data["radius"]
 
         if isinstance(df, dict):
             # Validation
-            data["distance_filter"] = {
+            data["radius"] = {
                 "operator": df.get("operator"),
                 "value": df.get("value"),
                 "unit": df.get("unit")
             }
 
             # optional: if empty -> None
-            if all(v is None for v in data["distance_filter"].values()):
-                data["distance_filter"] = None
+            if all(v is None for v in data["radius"].values()):
+                data["radius"] = None
 
         else:
-            data["distance_filter"] = None
+            data["radius"] = None
     return data
     
 # Interpret Query
@@ -180,7 +180,7 @@ def interpret_query(state):
     "entity_name": "...",
     "second_entity": "..."
     "cardinal_direction": "northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern | null",
-    "distance_filter": {{
+    "radius": {{
         "operator": "< | > | = | <= | >= | null",
         "value": number | null,
         "unit": "km | m | null"
@@ -227,7 +227,7 @@ def interpret_query(state):
         - "southwest", "southwestern" → ALWAYS cardinal_direction = "southwestern"
         - Otherwise return null
 
-        3.2. distance_filter:
+        3.2. radius:
         - Extract ONLY if a distance constraint is mentioned
         - Convert all numbers to numeric values (no strings)
         - Normalize units:
@@ -254,7 +254,7 @@ def interpret_query(state):
             "entity_name": parsed.get("entity_name"),
             "second_entity": parsed.get("second_entity"),
             "cardinal_direction": parsed.get("cardinal_direction"),
-            "distance_filter": parsed.get("distance_filter"),
+            "radius": parsed.get("radius"),
             "distance_between": parsed.get("distance_between")
         }
 
@@ -555,8 +555,8 @@ def select_relates_type(state):
     if state.get("distance_between"):
         return "distance_between"
 
-    if state.get("distance_filter"):
-        return "distance_filter"
+    if state.get("radius"):
+        return "radius"
 
     if state.get("cardinal_direction"):
         return "direction"
@@ -602,8 +602,8 @@ def build_direction_query(state):
         "cypher_query": query
     }
 
-def build_distance_filter_query(state):
-    distance = state.get("distance_filter")
+def build_radius_query(state):
+    distance = state.get("radius")
 
     op = distance.get("operator")
     value = distance.get("value")
@@ -713,7 +713,7 @@ workflow.add_node("add_relates_type", add_relates_type)
 
 #relates
 workflow.add_node("build_direction_query", build_direction_query)
-workflow.add_node("build_distance_filter_query", build_distance_filter_query)
+workflow.add_node("build_radius_query", build_radius_query)
 workflow.add_node("build_distance_between_query", build_distance_between_query)
 
 workflow.add_node("execute_query", execute_query)
@@ -741,7 +741,7 @@ workflow.add_conditional_edges(
     select_relates_type,
     {
         "direction": "build_direction_query",
-        "distance_filter": "build_distance_filter_query",
+        "radius": "build_radius_query",
         "distance_between": "build_distance_between_query"
     }
 )
@@ -750,7 +750,7 @@ workflow.add_edge("build_within_super_class", "execute_query")
 workflow.add_edge("build_within_sub_class", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
 workflow.add_edge("build_direction_query", "execute_query")
-workflow.add_edge("build_distance_filter_query", "execute_query")
+workflow.add_edge("build_radius_query", "execute_query")
 workflow.add_edge("build_distance_between_query", "execute_query")
 
 workflow.add_edge("execute_query", "verbalize")
