@@ -76,7 +76,7 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
       setMessages((prev) => [
         ...prev,
         {
-          text: "⚠️ Backend not reachable",
+          text: "Backend not reachable (maybe backend has not been started)",
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,

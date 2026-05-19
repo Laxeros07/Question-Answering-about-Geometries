@@ -6,12 +6,16 @@ from typing import TypedDict, Literal, Optional, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
 from langchain_community.graphs import Neo4jGraph
+from langchain_neo4j import Neo4jGraph
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.json import JSON
 
 import os
+
+from typing import List
+from pydantic import BaseModel, Field
 
 llm = None
 graph = None
@@ -28,386 +32,131 @@ def build_chain(apiKey):
         password="chatwithgermany"
     )
 
+# Pydantic and llm_with_structured_output
+
+relationship_description = """
+Classify the question into one of these intents:
+    - "within": hierarchical containment (lies in, belongs to, is in)
+    - "touches": geographic neighbors (lies next to, is next to, touches)
+    - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
+"""
+
+cardinal_direction_description = """
+Extract one of the following relationships if mentioned ("northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern)
+    - "north", "northern" → ALWAYS cardinal_direction = "northern"
+    - "south", "southern" → ALWAYS cardinal_direction = "southern"
+    - "east", "eastern" → ALWAYS cardinal_direction = "eastern"
+    - "west", "western" → ALWAYS cardinal_direction = "western"
+    - "northeast", "northeastern" → ALWAYS cardinal_direction = "northeastern"
+    - "northwest", "northwestern" → ALWAYS cardinal_direction = "northwestern"
+    - "southeast", "southeastern" → ALWAYS cardinal_direction = "southeastern"
+    - "southwest", "southwestern" → ALWAYS cardinal_direction = "southwestern"
+"""
+
+distance_constraint_description = """
+    - Extract ONLY if a distance constraint is mentioned
+    - Convert all numbers to numeric values (no strings)
+    - Normalize units:
+    - "km", "kilometer" → km
+    - "m", "meter" → m
+"""
+
+distance_between_description = """
+    - TRUE only if TWO entities are explicitly compared
+    - keywords: "between", "distance from X to Y", "What is the distance.."
+"""
+
+hierachy_assignment_description = """
+    - Assign the entities to one of the following hierarchies:
+    City < District < AdministrativeDistrict < FederalState
+
+    - Return the answer as a list of strings of the format entity:hierarchy
+
+    Rules:
+    - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
+        - If "administrative District of" or "the administrative District ..." is in the question → entity:AdministrativeDistrict
+        - If "District of" or "the District ..." is in the question → entity:District
+        - If "federal State of" or "the federal State ..." is in the question → entity:FederalStat
+
+        - If asking "Which Cities lie within ..." → entity:"District" or entity:"AdministrativeDistrict" or entity:"FederalState"
+        - If asking "Which Districts lie within ..." → entity:"AdministrativeDistrict" or entity:"FederalState"
+        - If asking "Which administrative Districts lie within ..." → entity:"FederalState"
+
+        - If asking "Which Cities lie next to (border) ..." → entity:"City"
+        - If asking "Which administrative Districts lie next to (border) ..." → entity:"AdministrativeDistrict"
+        - If asking "Which Districts lie next to (border) ..." → entity:"District"
+        - If asking "Which federal States lie next to (border) ..." → "FederalState"
+"""
+
+spatial_entities_description = """
+     List of entity names:
+     - A entity name is a proper name of a place in Germany
+     - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState")
+     of an entity into the list
+"""
+
+target_type_description = """
+    assign the target entity type in a geographic query to one of the following hierarchy:
+    City < District < AdministrativeDistrict < FederalState
+
+    - Return the answer as a list of strings
+
+    Rules:
+    - The target type is what is asked for in the question
+"""
+
+class ParameterExtraction(BaseModel):
+    language: str = Field(description="language of the input question")
+    spatial_relationship: str = Field(description=relationship_description)
+    cardinal_direction: str = Field(description=cardinal_direction_description)
+    spatial_entities: List[str]  = Field(description=spatial_entities_description)
+    distance_constraint: str  = Field(description=distance_constraint_description)
+    distance_between: str = Field(description=distance_between_description)
+    hierarchy: List[str] = Field(description=hierachy_assignment_description)
+    target_type: str = Field(description=target_type_description)
 
 class AgentState(TypedDict):
     # INPUT
-    question: str  
+    question: str
 
-    # INTERPRETATION
-    intent: str  
-    entity_name: str
-    second_entity: Optional[str] 
-
-    # ENTITY RESOLUTION
-    source_type: str  
-    target_type: str  
-
-    # HIERARCHY
-    inheritance: str   # "super_class" | "sub_class" | "same"
-
-    # 🌍 SPATIAL
-    cardinal_direction: Optional[str]   # "north" | "south" | "east" | "west" | None
-
-    radius: Optional[Dict]    
-    # {
-    #   "operator": "<", ">", "<=", ">=", "="
-    #   "value": 10,
-    #   "unit": "km"
-    # }
-
+    language: str
+    spatial_relationship: str
+    cardinal_direction: str
     distance_between: bool
-
-    # QUERY
-    cypher_query: str  
+    spatial_entities: str
+    distance_constraint: str
+    hierarchy: str
+    target_type: str
 
     # OUTPUT
-    result: str  
-    # Hierarchy
+    result: str
 
+# Hierarchy
 HIERARCHY = [
     "City",
     "District",
     "AdministrativeDistrict",
     "FederalState"
 ]
-
-# Normalizer
-def normalize(text: str):
-    text = text.lower()
-
-    mapping = {
-        "city": "City",
-        "stadt": "City",
-        "städte": "City",
-
-        "administrative District": "AdministrativeDistrict",
-        "administrative": "AdministrativeDistrict",
-        "Verwaltungsbezirk": "AdministrativeDistrict",
-
-        "district": "District",
-        "kreis": "District",
-        "landkreis": "District",
-
-        "bundesland": "FederalState",
-        "bundesländer": "FederalState",
-        "state": "FederalState",
-        "federal": "FederalState",
-    }
-
-    for k, v in mapping.items():
-        if k in text:
-            return v
-
-    return None
-
-# Parsing
-def safe_parse(response: str):
-    import json
-
-    try:
-        data = json.loads(response)
-    except Exception:
-        # Fallback
-        return {
-            "intent": "within",
-            "entity_name": "",
-            "second_entity": None,
-            "cardinal_direction": None,
-            "radius": None,
-            "distance_between": False
-        }
-
-    # defaults
-    data.setdefault("intent", "within")
-    data.setdefault("entity_name", "")
-    data.setdefault("second_entity", None)
-    data.setdefault("cardinal_direction", None)
-    data.setdefault("radius", None)
-    data.setdefault("distance_between", False)
-
-    # normalise direction
-    if data.get("cardinal_direction"):
-        dir_raw = data["cardinal_direction"].lower()
-
-        mapping = {
-            # north
-            "north": "northern",
-            # south
-            "south": "southern",
-            # east
-            "east": "eastern",
-            # west
-            "west": "western",
-            # diagonals
-            "northeast": "northeastern",
-            "northwest": "northwestern",
-            "southeast": "southeastern",
-            "southwest": "southwestern"
-        }
-
-        data["cardinal_direction"] = mapping.get(dir_raw, dir_raw)
-
-    # ensure distance 
-    if data.get("radius"):
-        df = data["radius"]
-
-        if isinstance(df, dict):
-            # Validation
-            data["radius"] = {
-                "operator": df.get("operator"),
-                "value": df.get("value"),
-                "unit": df.get("unit")
-            }
-
-            # optional: if empty -> None
-            if all(v is None for v in data["radius"].values()):
-                data["radius"] = None
-
-        else:
-            data["radius"] = None
-    return data
     
 # Interpret Query
 def interpret_query(state):
-    prompt = f"""
-
-    Question:
-    {state['question']}
-
-    Return ONLY valid JSON with this schema:
-    {{
-    "intent": "within | touches | relates",
-    "entity_name": "...",
-    "second_entity": "..."
-    "cardinal_direction": "northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern | null",
-    "radius": {{
-        "operator": "< | > | = | <= | >= | null",
-        "value": number | null,
-        "unit": "km | m | null"
-    }}
-    "distance_between": true | false
-    }}
-
-
-    1. Classify the question into one of these intents:
-
-    - "within": hierarchical containment (lies in, belongs to, is in)
-    - "touches": geographic neighbors (lies next to, is next to, touches)
-    - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
-
-    2. Find out the entity name(The entity name is the name of a place in Germany):
-    - entity_name = main reference entity
-    - second_entity = ONLY if question compares TWO places
-
-    Rules:
-    - "lies in", "in which ..." → ALWAYS "within"
-    - "Which ... lie in ..." → ALWAYS "within"
-
-    - "next to", "border ..." → ALWAYS "touches"
-
-    - "relates" → ALWAYS "relates"
-    - "What lies north/south/east/west of ...?" → ALWAYS "relates"
-    - "How far ..." → ALWAYS "relates"
-
-    -The name of the entity is NEVER a word like: 
-    - "City", "Cities",
-    - "District", "Districts"
-    - "Administrative", "federal", "State"
-
-    3. For intent = "relates":
-        3.1. cardinal_direction:
-        - Extract if mentioned ("northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern)
-        - "north", "northern" → ALWAYS cardinal_direction = "northern"
-        - "south", "southern" → ALWAYS cardinal_direction = "southern"
-        - "east", "eastern" → ALWAYS cardinal_direction = "eastern"
-        - "west", "western" → ALWAYS cardinal_direction = "western"
-        - "northeast", "northeastern" → ALWAYS cardinal_direction = "northeastern"
-        - "northwest", "northwestern" → ALWAYS cardinal_direction = "northwestern"
-        - "southeast", "southeastern" → ALWAYS cardinal_direction = "southeastern"
-        - "southwest", "southwestern" → ALWAYS cardinal_direction = "southwestern"
-        - Otherwise return null
-
-        3.2. radius:
-        - Extract ONLY if a distance constraint is mentioned
-        - Convert all numbers to numeric values (no strings)
-        - Normalize units:
-        - "km", "kilometer" → km
-        - "m", "meter" → m
-
-        3.3. operator mapping:
-        - "less than", "unter", "weniger als" → "<"
-        - "more than", "über", "mehr als" → ">"
-        - "within", "max", "höchstens" → "<="
-        - "exactly", "genau" → "="
-
-        3.4. distance between:
-        - TRUE only if TWO entities are explicitly compared
-        - keywords: "between", "distance from X to Y", "What is the distance.."
-
-    """
-
-    response = llm.invoke(prompt).content
-    parsed = safe_parse(response)
+    question = state['question']
+    model = ChatOpenAI(model="gpt-5-mini", temperature=0)
+    structured_llm = model.with_structured_output(schema=ParameterExtraction)
+    response = structured_llm.invoke(question)
     return {
             **state,
-            "intent": parsed.get("intent"),
-            "entity_name": parsed.get("entity_name"),
-            "second_entity": parsed.get("second_entity"),
-            "cardinal_direction": parsed.get("cardinal_direction"),
-            "radius": parsed.get("radius"),
-            "distance_between": parsed.get("distance_between")
-        }
+            "language": response.language,
+            "spatial_relationship": response.spatial_relationship,
+            "cardinal_direction": response.cardinal_direction,
+            "distance_between": response.distance_between,
+            "spatial_entities": response.spatial_entities,
+            "distance_constraint": response.distance_constraint,
+            "hierarchy": response.hierarchy,
+            "target_type": response.target_type
+            }
 
-
-# Entity Type Resolver
-def resolve_entity_type(state):
-    query = """
-    MATCH (n)
-    WHERE toLower(n.Name) = toLower($name)
-    RETURN labels(n)[0] AS type
-    """
-
-    results = graph.query(query, {"name": state["entity_name"]})
-
-    types = list(set(r["type"] for r in results))
-    # ✅ Case 1: one result
-    if len(types) == 1:
-        return {**state, "source_type": types[0]}
-    
-    if not results:
-        return {**state, "source_type": "District"}  # or None?
-
-    # ✅ Case 2: several results → LLM
-    prompt = f"""
-You are resolving entity ambiguity in a geographic database.
-
-Question:
-{state["question"]}
-
-Entity:
-{state["entity_name"]}
-
-Possible types:
-{types}
-
-Hierarchy:
-City < District < AdministrativeDistrict < FederalState
-
-Task:
-Pick the MOST appropriate type for the entity in this question.
-
-Rules:
-- If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
-    - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
-    - If "District of" or "the District ..." is in the question → the source type = District
-    - If "federal State of" or "the federal State ..." is in the question → the source type = FederalState
-use them as source type in every case
-- If intent = "within":
-    - If a Type ("City | District | AdministrativeDistrict | FederalState") is stated in the question like in the following examples:
-        - If "administrative District of" or "the administrative District ..." is in the question → the source type = AdministrativeDistrict
-        - If "District of" or "the District ..." is in the question → the source type = District
-        - If "federal State of" or "the federal State ..." is in the question → the source type = FederalState
-    use them as source type in every case
-
-    - If asking "Which Cities lie within ..." → the source type must be: "District" or "AdministrativeDistrict" or "FederalState"
-    - If asking "Which Districts lie within ..." → the source type must be: "AdministrativeDistrict" or "FederalState"
-    - If asking "Which administrative Districts lie within ..." → the source type must be: "FederalState"
-
-- If intent = "touches":
-    - If asking "Which Cities lie next to (border) ..." → source type = "City"
-    - If asking "Which administrative Districts lie next to (border) ..." → source type =  "AdministrativeDistrict"
-    - If asking "Which Districts lie next to (border) ..." → source type = "District"
-    - If asking "Which federal States lie next to (border) ..." → "FederalState"
-    - If "touches" → same level entities
-
-- If intent = "relates":
-
-Return ONLY JSON:
-{{
-  "source_type": "City | District | AdministrativeDistrict | FederalState"
-}}
-"""
-
-    response = llm.invoke(prompt).content
-
-    parsed = safe_parse(response)
-
-    source_type = parsed.get("source_type")
-
-    # fallback
-    if source_type not in types:
-        source_type = types[0]
-    return {
-        **state,
-        "source_type": source_type
-    }
-
-# Target Type
-def resolve_target_type(state):
-    
-    intent = state["intent"]
-    question = state["question"]
-    source_type = state["source_type"]
-
-    # ✅ FAST PATH (no LLM needed)
-    if intent == "touches":
-        return {**state, "target_type": source_type}
-
-    # ✅ LLM for everything else
-    prompt = f"""
-You are determining the TARGET entity type in a geographic query.
-
-Question:
-{question}
-
-Source entity type:
-{source_type}
-
-Hierarchy:
-City < District < AdministrativeDistrict < FederalState
-
-Intent:
-{intent}
-
-Task:
-Determine what type of entities the user is asking for.
-
-Rules:
-- "In which administrative District lies ... → target type = AdministrativeDistrict
-- "In which District lies ... → target type = District
-- "In which federal State lies ... → target type = FederalState
-
-- "Which Cities lie in ..." → target type = City
-- "Which administrative Districts lie in ..." → target type = AdministrativeDistrict
-- "Which Districts lie in ..." → target type = District
-- "Which Districts lie in the administrative District of ..." → target type = District
-
-- Be careful with the types 'District' and 'AdministrativeDistrict', only take 'AdministrativeDistrict' if the question includes the word "administrative".
-
-- "touches" → same type as source
-- If unclear → choose the most logical level based on hierarchy
-
-Return ONLY JSON:
-{{
-  "target_type": "City | District | AdministrativeDistrict | FederalState"
-}}
-"""
-
-    response = llm.invoke(prompt).content
-    parsed = safe_parse(response)
-
-    target_type = parsed.get("target_type")
-
-    # ✅ fallback safety
-    VALID = ["City", "District", "AdministrativeDistrict", "FederalState"]
-
-    if target_type not in VALID:
-        # smart fallback based on direction intuition
-        target_type = source_type
-    return {
-        **state,
-        "target_type": target_type
-    }
 
 # Inheritance
 def add_inheritance(state):
@@ -702,8 +451,6 @@ Rules:
 workflow = StateGraph(AgentState)
 
 workflow.add_node("interpret_query", interpret_query)
-workflow.add_node("resolve_entity_type", resolve_entity_type)
-workflow.add_node("resolve_target_type", resolve_target_type)
 workflow.add_node("add_inheritance", add_inheritance)
 
 workflow.add_node("build_within_super_class", build_within_super_class)
@@ -720,9 +467,7 @@ workflow.add_node("execute_query", execute_query)
 workflow.add_node("verbalize", verbalize)
 
 workflow.add_edge(START, "interpret_query")
-workflow.add_edge("interpret_query", "resolve_entity_type")
-workflow.add_edge("resolve_entity_type", "resolve_target_type")
-workflow.add_edge("resolve_target_type", "add_inheritance")
+workflow.add_edge("interpret_query", "add_inheritance")
 
 workflow.add_conditional_edges(
     "add_inheritance",
@@ -810,7 +555,7 @@ if __name__ == "__main__":
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
     example_question = "Which Cities lie in the administrative District of Münster?"
-    example_api_key = os.getenv("OPENAI_API_KEY", "")
+    example_api_key = ""
     if example_api_key:
         result = run_question(example_question, example_api_key)
         fancy_print(result)
