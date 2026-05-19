@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { API_BASE_URL } from "./constants";
 
 /**
  * Returns the color for a given geometry type.
@@ -123,7 +124,7 @@ export async function fetchGeometries(searchIDs) {
     }
   });
   const res = await fetch(
-    "http://localhost:8000/api/geometries?ids=" + ids.join(","),
+    `${API_BASE_URL}/api/geometries?ids=` + ids.join(","),
   );
   const rows = await res.json();
 
@@ -142,4 +143,57 @@ export async function fetchGeometries(searchIDs) {
       };
     })
     .filter(Boolean);
+}
+
+/**
+ * Exports a Leaflet layer or all map layers as a GeoJSON file.
+ * @param {L.Layer | string} layerOrKey - Either a Leaflet layer object or a key from map.layers (e.g., 'cityLayer')
+ * @param {L.Map} map - The Leaflet map instance
+ * @param {string} filename - Optional filename
+ */
+export function exportLayerToGeoJSON(
+  layerOrKey,
+  map,
+  filename = "map-export.geojson",
+) {
+  let layer;
+
+  // Fall 1: Es wurde ein Key übergeben (z.B. 'cityLayer'), wir holen den Layer aus der Map-Instanz
+  if (typeof layerOrKey === "string") {
+    layer = map.layers[layerOrKey];
+  } else {
+    // Fall 2: Es wurde direkt ein Layer-Objekt übergeben
+    layer = layerOrKey;
+  }
+
+  if (!layer || layer.getLayers().length === 0) {
+    alert("Keine Daten in diesem Layer zum Exportieren vorhanden.");
+    return;
+  }
+
+  try {
+    // 1. Konvertierung in GeoJSON
+    const geojsonData = layer.toGeoJSON();
+
+    // 2. In JSON-String umwandeln (mit Einrückung für Lesbarkeit)
+    const jsonString = JSON.stringify(geojsonData, null, 2);
+
+    // 3. Blob erstellen
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    // 4. Download-Link temporär erstellen und auslösen
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    // 5. Aufräumen
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Export failed:", error);
+    alert("Ein Fehler ist beim Export aufgetreten.");
+  }
 }

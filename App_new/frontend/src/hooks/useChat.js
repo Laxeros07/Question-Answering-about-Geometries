@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { clearGeometries } from "../utils/map";
+import { API_BASE_URL } from "../utils/constants";
 
 export default function useChat(apiKey, mapInstanceRef, onGeoData) {
   const [messages, setMessages] = useState([
@@ -43,7 +44,7 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
 
     try {
       // Triggers the question-answering process in the backend and waits for the response
-      const res = await fetch("http://localhost:8000/api/chat", {
+      const res = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -60,22 +61,22 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
       setMessages((prev) => [
         ...prev,
         {
-          text: data.result,
+          text: data.result.verbalized,
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,
         },
       ]);
 
-      // Intermediate_steps is undefined, when an error occured.
-      if (data.intermediate_steps && onGeoData) {
-        onGeoData(data.intermediate_steps);
+      // undefined, when an error occured.
+      if (data.result.start && onGeoData) {
+        onGeoData([data.result.start, ...data.result.target]);
       }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
-          text: "⚠️ Backend not reachable",
+          text: "Backend not reachable (maybe backend has not been started)",
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,

@@ -6,6 +6,7 @@ from typing import TypedDict, Literal, Optional, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
 from langchain_community.graphs import Neo4jGraph
+from langchain_neo4j import Neo4jGraph
 
 from rich.console import Console
 from rich.panel import Panel
@@ -157,38 +158,37 @@ def interpret_query(state):
             }
 
 
-# Direction
-def infer_direction(source, target):
+# Inheritance
+def add_inheritance(state):
+    source = state["source_type"]
+    target = state["target_type"]
+    
     if source not in HIERARCHY or target not in HIERARCHY:
-        return "down"  # safe fallback
+        inheritance = "sub_class"  # safe fallback
+    else:
+        s = HIERARCHY.index(source)
+        t = HIERARCHY.index(target)
 
-    s = HIERARCHY.index(source)
-    t = HIERARCHY.index(target)
-
-    if s > t:
-        return "down"
-    if s < t:
-        return "up"
-    return "same"
-
-def add_direction(state):
+        if s > t:
+            inheritance = "sub_class"
+        elif s < t:
+            inheritance = "super_class"
+        else:
+            inheritance = "same"
     return {
         **state,
-        "direction": infer_direction(
-            state["source_type"],
-            state["target_type"]
-        )
+        "inheritance": inheritance
     }
 
 # Routing
 def select_query_type(state):
     if state["intent"] == "within":
-        return f"within_{state['direction']}"
+        return f"within_{state['inheritance']}"
 
     return f"{state['intent']}_action"
 
 # Within
-def build_within_up(state):
+def build_within_super_class(state):
     source = state["source_type"]
     target = state["target_type"]
     name = state["entity_name"]
@@ -231,7 +231,7 @@ def build_within_up(state):
 
     return {**state, "cypher_query": query}
 
-def build_within_down(state):
+def build_within_sub_class(state):
     source = state["source_type"]
     target = state["target_type"]
     name = state["entity_name"]
@@ -304,8 +304,8 @@ def select_relates_type(state):
     if state.get("distance_between"):
         return "distance_between"
 
-    if state.get("distance_filter"):
-        return "distance_filter"
+    if state.get("radius"):
+        return "radius"
 
     if state.get("cardinal_direction"):
         return "direction"
@@ -351,8 +351,8 @@ def build_direction_query(state):
         "cypher_query": query
     }
 
-def build_distance_filter_query(state):
-    distance = state.get("distance_filter")
+def build_radius_query(state):
+    distance = state.get("radius")
 
     op = distance.get("operator")
     value = distance.get("value")
@@ -438,40 +438,43 @@ Rules:
 - The Result is never a question
 - Put only the result in the Answer NEVER the question
 """
-
     return {
         **state,
-        "result": llm.invoke(prompt).content
+        "result": {
+            "verbalized": llm.invoke(prompt).content,
+            "start": state["result"][0]["start"],
+            "target": state["result"][0]["target"],
+        }
     }
 
 # build graph
 workflow = StateGraph(AgentState)
 
 workflow.add_node("interpret_query", interpret_query)
-workflow.add_node("add_direction", add_direction)
+workflow.add_node("add_inheritance", add_inheritance)
 
-workflow.add_node("build_within_up", build_within_up)
-workflow.add_node("build_within_down", build_within_down)
+workflow.add_node("build_within_super_class", build_within_super_class)
+workflow.add_node("build_within_sub_class", build_within_sub_class)
 workflow.add_node("build_touches_query", build_touches_query)
 workflow.add_node("add_relates_type", add_relates_type)
 
 #relates
 workflow.add_node("build_direction_query", build_direction_query)
-workflow.add_node("build_distance_filter_query", build_distance_filter_query)
+workflow.add_node("build_radius_query", build_radius_query)
 workflow.add_node("build_distance_between_query", build_distance_between_query)
 
 workflow.add_node("execute_query", execute_query)
 workflow.add_node("verbalize", verbalize)
 
 workflow.add_edge(START, "interpret_query")
-workflow.add_edge("interpret_query", "add_direction")
+workflow.add_edge("interpret_query", "add_inheritance")
 
 workflow.add_conditional_edges(
-    "add_direction",
+    "add_inheritance",
     select_query_type,
     {
-        "within_up": "build_within_up",
-        "within_down": "build_within_down",
+        "within_super_class": "build_within_super_class",
+        "within_sub_class": "build_within_sub_class",
         "touches_action": "build_touches_query",
         "relates_action": "add_relates_type"
     }
@@ -483,16 +486,16 @@ workflow.add_conditional_edges(
     select_relates_type,
     {
         "direction": "build_direction_query",
-        "distance_filter": "build_distance_filter_query",
+        "radius": "build_radius_query",
         "distance_between": "build_distance_between_query"
     }
 )
 
-workflow.add_edge("build_within_up", "execute_query")
-workflow.add_edge("build_within_down", "execute_query")
+workflow.add_edge("build_within_super_class", "execute_query")
+workflow.add_edge("build_within_sub_class", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
 workflow.add_edge("build_direction_query", "execute_query")
-workflow.add_edge("build_distance_filter_query", "execute_query")
+workflow.add_edge("build_radius_query", "execute_query")
 workflow.add_edge("build_distance_between_query", "execute_query")
 
 workflow.add_edge("execute_query", "verbalize")
@@ -517,7 +520,7 @@ def fancy_print(result):
     ))
 
     console.print(Panel.fit(
-        f"[bold green]ANSWER[/bold green]\n{result.get('result')}",
+        f"[bold green]ANSWER[/bold green]\n{result.get('result')['verbalized']}",
         border_style="green"
     ))
 
@@ -528,7 +531,7 @@ def fancy_print(result):
     console.print("\n" + "═"*80 + "\n")
 
 def run_question(question: str, apiKey: str):
-    """Initialisiert LLM und Neo4j und führt die Frage aus."""
+    """Initialize LLM and Neo4j and execute the question."""
     build_chain(apiKey)
     return compiled_graph.invoke({"question": question})
 
