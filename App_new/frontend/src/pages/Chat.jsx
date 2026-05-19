@@ -1,7 +1,7 @@
 import PageTitle from "../components/PageTitle";
 import { useRef } from "react";
 import Map from "../components/Map";
-import { loadGeometries, findKeysRecursively } from "../utils/map";
+import { loadGeometries, findKeysRecursively, exportLayerToGeoJSON } from "../utils/map"; 
 import useChat from "../hooks/useChat";
 import useApiKey from "../hooks/useApiKey";
 
@@ -9,22 +9,20 @@ export default function Chat() {
   const mapInstanceRef = useRef(null);
   const { apiKey, showModal, setShowModal, setApiKey, saveKey } = useApiKey();
 
-  // Callback function to handle the geodata received from the backend in useChat.js
-  const handleGeoData = (ids) => {
-    /*
-    let ids = [];
+  const handleDownload = (layerKey) => {
+    if (mapInstanceRef.current) {
+      exportLayerToGeoJSON(layerKey, mapInstanceRef.current, `${layerKey}.geojson`);
+    } else {
+      alert("Karte wird noch geladen...");
+    }
+  };
 
-    steps[1].context.forEach((item) => {
-      findKeysRecursively(item, ids);
-    });
-*/
-    // Delete duplicates
+  const handleGeoData = (ids) => {
     const uniqueIDs = ids.filter(
       (item, index, self) =>
         index ===
         self.findIndex((t) => t.id === item.id && t.name === item.name),
     );
-
     loadGeometries(uniqueIDs, mapInstanceRef.current);
   };
 
@@ -40,48 +38,29 @@ export default function Chat() {
               <div className="modal-content">
                 <div className="modal-header d-flex justify-content-between">
                   <h4 className="modal-title">OpenAI API Key</h4>
-                  <button
-                    className="btn-close"
-                    onClick={() => setShowModal(false)}
-                  />
+                  <button className="btn-close" onClick={() => setShowModal(false)} />
                 </div>
-
                 <div className="modal-body">
                   <p>Enter your OpenAI API key:</p>
-
                   <input
                     className="form-control"
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        saveKey();
-                      }
-                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveKey(); }}
                   />
-
-                  <p className="fst-italic fw-light mt-2">
-                    Without key, Chat with NRW won't work.
-                  </p>
+                  <p className="fst-italic fw-light mt-2">Without key, Chat with NRW won't work.</p>
                 </div>
-
                 <div className="modal-footer">
-                  <button
-                    className="btn saveBtn btn-danger ms-auto"
-                    onClick={saveKey}
-                  >
-                    Save key
-                  </button>
+                  <button className="btn saveBtn btn-danger ms-auto" onClick={saveKey}>Save key</button>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* BACKDROP */}
           <div className="modal-backdrop fade show"></div>
         </>
       )}
+
       <PageTitle title="Chat" />
       <div className="container">
         <div className="row gy-4 gx-lg-3 mt-3">
@@ -90,22 +69,13 @@ export default function Chat() {
             <div className="chat_window">
               <div className="top_menu">
                 <div className="title">ChatBot - Shadowfax</div>
-
-                <button
-                  className="btn btn-sm btn-outline-secondary"
-                  onClick={() => setShowModal(true)}
-                >
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowModal(true)}>
                   Change API Key
                 </button>
               </div>
-
-              {/* dynamically rendered */}
               <ul className="messages">
                 {messages.map((msg, i) => (
-                  <li
-                    key={i}
-                    className={`message ${msg.side} ${msg.appeared ? "appeared" : ""}`}
-                  >
+                  <li key={i} className={`message ${msg.side} ${msg.appeared ? "appeared" : ""}`}>
                     {msg.side === "left" && <div className="avatar"></div>}
                     <div className="text_wrapper">
                       <div className="text">{msg.text}</div>
@@ -114,7 +84,6 @@ export default function Chat() {
                     {msg.side === "right" && <div className="avatar"></div>}
                   </li>
                 ))}
-
                 {isLoading && (
                   <li className="message left appeared">
                     <div className="avatar"></div>
@@ -122,8 +91,6 @@ export default function Chat() {
                   </li>
                 )}
               </ul>
-
-              {/* input */}
               <div className="bottom_wrapper">
                 <input
                   id="msg_input"
@@ -132,18 +99,36 @@ export default function Chat() {
                   onKeyDown={handleKeyDown}
                   placeholder="Say Hi to begin chat..."
                 />
-                <div className="app_button_1" onClick={sendMessage}>
-                  Send
-                </div>
+                <div className="app_button_1" onClick={sendMessage}>Send</div>
               </div>
             </div>
           </div>
 
-          {/* LEFT SIDE */}
+          {/* LEFT SIDE (Karten-Sektion) */}
           <div className="col-lg-5 col-xs-12 mb-3">
             <div className="chat_window">
-              <div className="top_menu">
+              <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">NRW</div>
+                
+                {/* --- DROPDOWN START --- */}
+                <div className="dropdown">
+                  <button 
+                    className="btn btn-sm btn-outline-primary dropdown-toggle" 
+                    type="button" 
+                    id="downloadDropdown" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false"
+                  >
+                    Download Data as GeoJSON
+                  </button>
+                  <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="downloadDropdown">
+                    <li><button className="dropdown-item" onClick={() => handleDownload('cityLayer')}>Cities</button></li>
+                    <li><button className="dropdown-item" onClick={() => handleDownload('districtLayer')}>Districts</button></li>
+                    <li><button className="dropdown-item" onClick={() => handleDownload('adLayer')}>Admin Districts</button></li>
+                    <li><button className="dropdown-item" onClick={() => handleDownload('fsLayer')}>Federal States</button></li>
+                  </ul>
+                </div>
+                {/* --- DROPDOWN END --- */}
               </div>
 
               <div className="panel-group">
