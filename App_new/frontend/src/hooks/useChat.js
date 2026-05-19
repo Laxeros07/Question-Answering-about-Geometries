@@ -61,16 +61,16 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
       setMessages((prev) => [
         ...prev,
         {
-          text: data.result,
+          text: data.result.verbalized,
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,
         },
       ]);
 
-      // Intermediate_steps is undefined, when an error occured.
-      if (data.intermediate_steps && onGeoData) {
-        onGeoData(data.intermediate_steps);
+      // undefined, when an error occured.
+      if (data.result.start && onGeoData) {
+        onGeoData([data.result.start, ...data.result.target]);
       }
     } catch (err) {
       setMessages((prev) => [

@@ -10,13 +10,14 @@ export default function Chat() {
   const { apiKey, showModal, setShowModal, setApiKey, saveKey } = useApiKey();
 
   // Callback function to handle the geodata received from the backend in useChat.js
-  const handleGeoData = (steps) => {
+  const handleGeoData = (ids) => {
+    /*
     let ids = [];
 
     steps[1].context.forEach((item) => {
       findKeysRecursively(item, ids);
     });
-
+*/
     // Delete duplicates
     const uniqueIDs = ids.filter(
       (item, index, self) =>
