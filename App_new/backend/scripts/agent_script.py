@@ -17,6 +17,9 @@ import os
 from typing import List
 from pydantic import BaseModel, Field
 
+from dotenv import load_dotenv
+load_dotenv()  # Loads env variables from .env file
+
 llm = None
 graph = None
 
@@ -557,7 +560,7 @@ if __name__ == "__main__":
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
     example_question = "In which district lies Bocholt?"
-    example_api_key = ""
+    example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key)
         fancy_print(result)
