@@ -194,7 +194,7 @@ def select_query_type(state):
     return f"{state['spatial_relationship']}_action"
 
 def build_location_query(state):
-    source = state["hierarchy"][0].split(":")[1]
+    source = state["hierarchy"][0][1]
     name = state["spatial_entities"][0]
 
     query = f"""
@@ -483,6 +483,7 @@ Rules:
   include the level in the answer but NOT the id
 - The Result is never a question
 - Put only the result in the Answer NEVER the question
+- Do not use Markdown or code formatting in the answer, just plain text
 """
     return {
         **state,
@@ -603,7 +604,7 @@ if __name__ == "__main__":
     #for q in questions:
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
-    example_question = "In which district lies Bocholt?"
+    example_question = "Where lies Bocholt?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key)
