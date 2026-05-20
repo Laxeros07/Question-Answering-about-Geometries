@@ -36,6 +36,7 @@ def build_chain(apiKey):
 
 relationship_description = """
 Classify the question into one of these spatial_relationships:
+    - "location": the geographic position (Where lies, Where is located) 
     - "within": hierarchical containment (lies in, belongs to, is in)
     - "touches": geographic neighbors (lies next to, is next to, touches)
     - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
@@ -188,6 +189,40 @@ def select_query_type(state):
         return f"within_{state['inheritance']}"
 
     return f"{state['spatial_relationship']}_action"
+
+def build_location_query(state):
+    source = state["hierarchy"][0].split(":")[1]
+    name = state["spatial_entities"][0]
+
+    query = f"""
+    MATCH (start:{source} {{Name: '{name}'}})
+
+    OPTIONAL MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+    OPTIONAL MATCH path =
+        (start)-[:hasFootprint]->(:Geometry)
+        -[:within*1..]->(:Geometry)
+        <-[:hasFootprint]-(parent)
+
+    WITH start, g, collect(DISTINCT {{
+        id: parent.ID,
+        name: parent.Name
+    }}) AS target
+
+    RETURN {{
+        start: {{
+            id: start.ID,
+            name: start.Name,
+            centroid: start.Centroid
+        }},
+        target: target
+    }} AS result
+    """
+
+    return {
+        **state,
+        "cypher_query": query
+    }                                                                                                                                                                                                                                                                                                         
 
 # Within
 def build_within_super_class(state):
@@ -430,13 +465,19 @@ def execute_query(state):
 # answer
 def verbalize(state):
     prompt = f"""
-Turn into natural English:
+Turn the result into natural english based on the context of the question.
 
 Question: {state['question']}
 Result: {state['result']}
 
 Rules:
-- If the result is a number, it is a Distance in m.
+- If the result is a number, it is a Distance in m. Round it to km
+- The first letter of the id states which hierarchy level the result has:
+    - C = City
+    - D = District
+    - A = Administrative District
+    - F = Federal State
+  include the level in the answer but NOT the id
 - The Result is never a question
 - Put only the result in the Answer NEVER the question
 """
@@ -455,6 +496,7 @@ workflow = StateGraph(AgentState)
 workflow.add_node("interpret_query", interpret_query)
 workflow.add_node("add_inheritance", add_inheritance)
 
+workflow.add_node("build_location_query", build_location_query)
 workflow.add_node("build_within_super_class", build_within_super_class)
 workflow.add_node("build_within_sub_class", build_within_sub_class)
 workflow.add_node("build_touches_query", build_touches_query)
@@ -475,6 +517,7 @@ workflow.add_conditional_edges(
     "add_inheritance",
     select_query_type,
     {
+        "location_action": "build_location_query",
         "within_super_class": "build_within_super_class",
         "within_sub_class": "build_within_sub_class",
         "touches_action": "build_touches_query",
@@ -493,6 +536,7 @@ workflow.add_conditional_edges(
     }
 )
 
+workflow.add_edge("build_location_query", "execute_query")
 workflow.add_edge("build_within_super_class", "execute_query")
 workflow.add_edge("build_within_sub_class", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
@@ -556,7 +600,7 @@ if __name__ == "__main__":
     #for q in questions:
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
-    example_question = "What is the distance between Bocholt and Siegburg?"
+    example_question = "Where lies Selm?"
     example_api_key = ""
     if example_api_key:
         result = run_question(example_question, example_api_key)
