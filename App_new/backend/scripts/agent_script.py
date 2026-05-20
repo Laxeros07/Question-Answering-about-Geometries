@@ -17,6 +17,9 @@ import os
 from typing import List
 from pydantic import BaseModel, Field
 
+from dotenv import load_dotenv
+load_dotenv()  # Loads env variables from .env file
+
 llm = None
 graph = None
 
@@ -71,22 +74,22 @@ hierachy_assignment_description = """
     - Assign the entities to one of the following hierarchies:
     City < District < AdministrativeDistrict < FederalState
 
-    - Return the answer as a list of Dict of the format [entity:hierarchy]
+    - Always return the answer as a list of lists of the format [[entity_name,hierarchy],[...]]
 
     Rules:
     - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
-        - If "administrative District of" or "the administrative District ..." is in the question → entity:AdministrativeDistrict
-        - If "District of" or "the District ..." is in the question → entity:District
-        - If "federal State of" or "the federal State ..." is in the question → entity:FederalStat
+        - If "administrative District of" or "the administrative District ..." is in the question → [entity_name, "AdministrativeDistrict"]
+        - If "District of" or "the District ..." is in the question → [entity_name, "District"]
+        - If "federal State of" or "the federal State ..." is in the question → [entity_name, "FederalState"]
 
-        - If asking "Which Cities lie within ..." → entity:"District" or entity:"AdministrativeDistrict" or entity:"FederalState"
-        - If asking "Which Districts lie within ..." → entity:"AdministrativeDistrict" or entity:"FederalState"
-        - If asking "Which administrative Districts lie within ..." → entity:"FederalState"
+        - If asking "Which Cities lie within ..." → [entity_name, "District"] or [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
+        - If asking "Which Districts lie within ..." → [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
+        - If asking "Which administrative Districts lie within ..." → [entity_name, "FederalState"]
 
-        - If asking "Which Cities lie next to (border) ..." → entity:"City"
-        - If asking "Which administrative Districts lie next to (border) ..." → entity:"AdministrativeDistrict"
-        - If asking "Which Districts lie next to (border) ..." → entity:"District"
-        - If asking "Which federal States lie next to (border) ..." → "FederalState"
+        - If asking "Which Cities lie next to (border) ..." → [entity_name, "City"]
+        - If asking "Which administrative Districts lie next to (border) ..." → [entity_name, "AdministrativeDistrict"]
+        - If asking "Which Districts lie next to (border) ..." → [entity_name, "District"]
+        - If asking "Which federal States lie next to (border) ..." → [entity_name, "FederalState"]
 """
 
 spatial_entities_description = """
@@ -113,7 +116,7 @@ class ParameterExtraction(BaseModel):
     spatial_entities: List[str]  = Field(description=spatial_entities_description)
     distance_constraint: str  = Field(description=distance_constraint_description)
     distance_between: str = Field(description=distance_between_description)
-    hierarchy: List[str] = Field(description=hierachy_assignment_description)
+    hierarchy: List[List[str]] = Field(description=hierachy_assignment_description)
     target_type: str = Field(description=target_type_description)
 
 class AgentState(TypedDict):
@@ -145,7 +148,7 @@ HIERARCHY = [
 # Interpret Query
 def interpret_query(state):
     question = state['question']
-    model = ChatOpenAI(model="gpt-5-mini", temperature=0)
+    model = ChatOpenAI(model="gpt-5-mini", temperature=1)
     structured_llm = model.with_structured_output(schema=ParameterExtraction)
     response = structured_llm.invoke(question)
     return {
@@ -163,7 +166,7 @@ def interpret_query(state):
 
 # Inheritance
 def add_inheritance(state):
-    source = state["hierarchy"][0].split(":")[1]
+    source = state["hierarchy"][0][1]
     target = state["target_type"]
     
     if source not in HIERARCHY or target not in HIERARCHY:
@@ -226,7 +229,7 @@ def build_location_query(state):
 
 # Within
 def build_within_super_class(state):
-    source = state["hierarchy"][0].split(":")[1]
+    source = state["hierarchy"][0][1]
     target = state["target_type"]
     name = state["spatial_entities"][0]
 
@@ -269,7 +272,7 @@ def build_within_super_class(state):
     return {**state, "cypher_query": query}
 
 def build_within_sub_class(state):
-    source = state["hierarchy"][0].split(":")[1]
+    source = state["hierarchy"][0][1]
     target = state["target_type"]
     name = state["spatial_entities"][0]
 
@@ -316,10 +319,10 @@ def build_touches_query(state):
         **state,
         "cypher_query": f"""
         MATCH 
-        (start:{state["hierarchy"][0].split(":")[1]} {{Name: '{state["spatial_entities"][0]}'}})
+        (start:{state["hierarchy"][0][1]} {{Name: '{state["spatial_entities"][0]}'}})
         -[:hasFootprint]->(:Geometry)
         <-[:touches]-(:Geometry)
-        <-[:hasFootprint]-(neighbor:{state["hierarchy"][0].split(":")[1]})
+        <-[:hasFootprint]-(neighbor:{state["hierarchy"][0][1]})
 
         WITH start, collect(DISTINCT {{
             id: neighbor.ID,
@@ -364,10 +367,10 @@ def build_direction_query(state):
 
     query = f"""
     MATCH 
-    (start:{state["hierarchy"][0].split(":")[1]} {{Name: '{state["spatial_entities"][0]}'}})
+    (start:{state["hierarchy"][0][1]} {{Name: '{state["spatial_entities"][0]}'}})
     -[:hasFootprint]->(g1:Geometry)
     -[r:relates {rel_filter}]->(g2:Geometry)
-    <-[:hasFootprint]-(other:{state["hierarchy"][0].split(":")[1]})
+    <-[:hasFootprint]-(other:{state["hierarchy"][0][1]})
 
     WITH start, collect(DISTINCT {{
         id: other.ID,
@@ -396,10 +399,10 @@ def build_radius_query(state):
 
     query = f"""
     MATCH 
-    (start:{state["hierarchy"][0].split(":")[1]} {{Name: '{state["spatial_entities"][0]}'}})
+    (start:{state["hierarchy"][0][1]} {{Name: '{state["spatial_entities"][0]}'}})
     -[:hasFootprint]->(g1:Geometry)
     -[r:relates]->(g2:Geometry)
-    <-[:hasFootprint]-(other:{state["hierarchy"][0].split(":")[1]})
+    <-[:hasFootprint]-(other:{state["hierarchy"][0][1]})
 
     WHERE r.Distance_between {op} {value}
 
@@ -429,10 +432,10 @@ def build_distance_between_query(state):
 
     query = f"""
     MATCH 
-    (a:{state["hierarchy"][0].split(":")[1]} {{Name: '{e1}'}})
+    (a:{state["hierarchy"][0][1]} {{Name: '{e1}'}})
     -[:hasFootprint]->(g1:Geometry)
     -[r:relates]->(g2:Geometry)
-    <-[:hasFootprint]-(b:{state["hierarchy"][0].split(":")[1]} {{Name: '{e2}'}})
+    <-[:hasFootprint]-(b:{state["hierarchy"][0][1]} {{Name: '{e2}'}})
 
     WITH a,r, collect(DISTINCT {{
         id: b.ID,
@@ -600,8 +603,8 @@ if __name__ == "__main__":
     #for q in questions:
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
-    example_question = "Where lies Selm?"
-    example_api_key = ""
+    example_question = "In which district lies Bocholt?"
+    example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key)
         fancy_print(result)
