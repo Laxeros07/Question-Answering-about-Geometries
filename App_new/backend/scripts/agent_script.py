@@ -81,7 +81,7 @@ hierarchy_assignment_description = """
     - Assign the entities to one of the following hierarchies:
     City < District < AdministrativeDistrict < FederalState
 
-    - Always return the answer as a list of lists of the format [[entity_name, hierarchy],[...]]
+    - Always return the answer as a NON EMPTY list of lists of the format [[entity_name, hierarchy],[...]]
 
     Rules:
     - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
@@ -97,7 +97,7 @@ hierarchy_assignment_description = """
         - If asking "Which administrative Districts lie next to (border) ..." → [entity_name, "AdministrativeDistrict"]
         - If asking "Which Districts lie next to (border) ..." → [entity_name, "District"]
         - If asking "Which federal States lie next to (border) ..." → [entity_name, "FederalState"]
-    - If no type is stated assign the type "City" or if the following german words are in the name, use them:
+    - If no type is stated assign the type "City" or, if the following german words are in the name, use them:
         - If "Stadt" in the name → "City"
         - If "Kreis" in the name → "District"
         - If "Regierungsbezirk" in the name → "AdministrativeDistrict"
@@ -105,7 +105,7 @@ hierarchy_assignment_description = """
 """
 
 spatial_entities_description = """
-     List of entity names:
+     REQUIRED: Always return a list of entity names mentioned in the question.
      - A entity name is a proper name of a place in Germany
      - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState")
      of an entity into the list
@@ -124,10 +124,10 @@ target_type_description = """
 class ParameterExtraction(BaseModel):
     language: str = Field(description="language of the input question")
     spatial_relationship: str = Field(description=relationship_description)
-    cardinal_direction: str = Field(description=cardinal_direction_description)
-    spatial_entities: List[str]  = Field(description=spatial_entities_description)
-    distance_constraint: float = Field(description=distance_constraint_description)
-    radius: bool = Field(description=radius_description),
+    cardinal_direction: Optional[str] = Field(default=None, description=cardinal_direction_description)
+    spatial_entities: List[str] = Field(description=spatial_entities_description)  # NEVER empty!
+    distance_constraint: Optional[float] = Field(default=None, description=distance_constraint_description)
+    radius: Optional[bool] = Field(default=False, description=radius_description)
     distance_between: bool = Field(description=distance_between_description)
     hierarchy: List[List[str]] = Field(description=hierarchy_assignment_description)
     target_type: str = Field(description=target_type_description)
@@ -174,7 +174,7 @@ def interpret_query(state):
     model = ChatOpenAI(
         openai_api_key=api_key, 
         model=model_name, 
-        temperature=0
+        temperature=1
     )
     llm = model
 
@@ -205,6 +205,9 @@ def interpret_query(state):
 
 # Inheritance
 def add_inheritance(state):
+    # Manually add City, when no hierarchy is given
+    if len(state["hierarchy"]) == 0:
+        state["hierarchy"] = [[state["spatial_entities"][0], "City"]]
     source = state["hierarchy"][0][1]
     target = state["target_type"]
     
@@ -668,7 +671,7 @@ if __name__ == "__main__":
     example_question = "What lies 10km from Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
-        result = run_question(example_question, example_api_key)
+        result = run_question(example_question, example_api_key, "gpt-5-nano")
         fancy_print(result)
     else:
         print("Bitte OPENAI_API_KEY setzen, bevor das Skript direkt ausgeführt wird.")
