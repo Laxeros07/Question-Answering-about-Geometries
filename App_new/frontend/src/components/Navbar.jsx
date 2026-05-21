@@ -16,7 +16,7 @@ export default function Navbar() {
         </Link>
 
         <Link className="navbar-brand" to="/">
-          Chat with NRW
+          Chat with Germany
         </Link>
 
         <button

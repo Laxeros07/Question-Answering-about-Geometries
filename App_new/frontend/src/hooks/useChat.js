@@ -10,7 +10,7 @@ export default function useChat(
 ) {
   const [messages, setMessages] = useState([
     {
-      text: "Hello there! Ask me some questions about the geometry of NRW. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
+      text: "Hello there! Ask me some questions about the geometry of Germany. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
       side: "left",
       time: new Date().toLocaleTimeString(),
       appeared: true,

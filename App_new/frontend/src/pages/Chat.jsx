@@ -53,7 +53,7 @@ export default function Chat() {
                     onChange={(e) => setApiKey(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") saveKey(); }}
                   />
-                  <p className="fst-italic fw-light mt-2">Without key, Chat with NRW won't work.</p>
+                  <p className="fst-italic fw-light mt-2">Without key, Chat with Germany won't work.</p>
                 </div>
                 <div className="modal-footer">
                   <button className="btn saveBtn btn-danger ms-auto" onClick={saveKey}>Save key</button>
@@ -130,7 +130,7 @@ export default function Chat() {
           <div className="col-lg-5 col-xs-12 mb-3">
             <div className="chat_window">
               <div className="top_menu d-flex justify-content-between align-items-center">
-                <div className="title">NRW</div>
+                <div className="title">Germany</div>
                 
                 <div className="dropdown">
                   <button 

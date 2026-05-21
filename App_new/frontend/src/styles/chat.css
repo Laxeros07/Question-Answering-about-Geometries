@@ -135,18 +135,18 @@ body {
 }
 
 .messages .message.left .text_wrapper {
-  background-color: #c0eed1;
+  background-color: #f9e9a6;
   margin-left: 20px;
 }
 
 .messages .message.left .text_wrapper::after,
 .messages .message.left .text_wrapper::before {
   right: 100%;
-  border-right-color: #c0eed1;
+  border-right-color: #f9e9a6;
 }
 
 .messages .message.left .timestamp {
-  color: #009036;
+  color: #b99500;
 }
 
 /* user message */
@@ -157,7 +157,7 @@ body {
 }
 
 .messages .message.right .text_wrapper {
-  background-color: #ffbec6;
+  background-color: #b9d2b0;
   margin-right: 20px;
   float: right;
 }
@@ -165,11 +165,11 @@ body {
 .messages .message.right .text_wrapper::after,
 .messages .message.right .text_wrapper::before {
   left: 100%;
-  border-left-color: #ffbec6;
+  border-left-color: #b9d2b0;
 }
 
 .messages .message.right .timestamp {
-  color: #b71f31;
+  color: #52823f;
 }
 
 /* text inpur from user */
@@ -188,6 +188,14 @@ body {
   border: 1px solid #bcbdc0;
   border-radius: 50px;
   margin-right: 15px;
+}
+
+/* Beim Klick/Fokus */
+.bottom_wrapper #msg_input:focus {
+  border-color: #b9d2b0;
+  border-width: 2px;
+  box-shadow: 0 0 1px #b9d2b0;
+  outline: none;
 }
 
 .app_button_1 {
