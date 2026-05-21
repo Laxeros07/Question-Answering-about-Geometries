@@ -53,9 +53,12 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
         }),
       });
 
-      if (!res.ok) throw new Error("Server error");
-
       data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.details || data.error || "Unknown server error");
+      }
+
       data = data.result;
 
       setMessages((prev) => [
@@ -76,7 +79,7 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
       setMessages((prev) => [
         ...prev,
         {
-          text: "Backend not reachable (maybe backend has not been started)",
+          text: "Error: " + err.message,
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,
