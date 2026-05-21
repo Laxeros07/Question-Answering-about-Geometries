@@ -53,7 +53,9 @@ export default function useChat(
         }),
       });
 
-      if (!res.ok) throw new Error("Server error");
+      if (!res.ok) {
+        throw new Error(data.details || data.error || "Unknown server error");
+      }
 
       const data = await res.json();
       //console.log("Backend Response:", data);
@@ -80,11 +82,14 @@ export default function useChat(
         onGeoData([resultData.start, ...resultData.target]);
       }
     } catch (err) {
-      console.error("DETAILED ERROR:", err);
+      // Backend not reachable
+      if (err instanceof TypeError) {
+        err.message = "Backend not reachable";
+      }
       setMessages((prev) => [
         ...prev,
         {
-          text: `Error: ${err.message}`,
+          text: "Error: " + err.message,
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,
