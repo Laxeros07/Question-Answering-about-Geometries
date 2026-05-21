@@ -17,20 +17,20 @@ import os
 from typing import List
 from pydantic import BaseModel, Field
 
-llm = None
+#llm = None
 graph = None
 
 
-def build_chain(apiKey):
-    global llm, graph
-    os.environ["OPENAI_API_KEY"] = apiKey
-
-    llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+# function only executed once when starting the app
+def init_db():
+    global graph
     graph = Neo4jGraph(
         url="neo4j://localhost:7687",
         username="neo4j",
         password="chatwithgermany"
     )
+
+init_db()
 
 # Pydantic and llm_with_structured_output
 
@@ -118,6 +118,8 @@ class ParameterExtraction(BaseModel):
 class AgentState(TypedDict):
     # INPUT
     question: str
+    apiKey: str
+    selectedModel: str
 
     # Parameter
     language: str
@@ -144,7 +146,19 @@ HIERARCHY = [
 # Interpret Query
 def interpret_query(state):
     question = state['question']
-    model = ChatOpenAI(model="gpt-5-mini", temperature=0)
+    api_key = state['apiKey']
+    model_name = state['selectedModel']
+
+    # initialize LLM
+    global llm
+    llm = ChatOpenAI(openai_api_key=api_key, model=model_name, temperature=0)
+    model = ChatOpenAI(
+        openai_api_key=api_key, 
+        model=model_name, 
+        temperature=0
+    )
+    llm = model
+
     structured_llm = model.with_structured_output(schema=ParameterExtraction)
     response = structured_llm.invoke(question)
     return {
@@ -421,10 +435,9 @@ def build_distance_between_query(state):
 
 # execute query
 def execute_query(state):
+    global graph
     result = graph.query(state["cypher_query"])
-
     cleaned = [r["result"] for r in result]
-
     return {**state, "result": cleaned}
 
 # answer
@@ -532,10 +545,14 @@ def fancy_print(result):
 
     console.print("\n" + "═"*80 + "\n")
 
-def run_question(question: str, apiKey: str):
-    """Initialize LLM and Neo4j and execute the question."""
-    build_chain(apiKey)
-    return compiled_graph.invoke({"question": question})
+def run_question(question: str, apiKey: str, selectedModel: str):
+    """Execute the question using the graph."""
+    inputs = {
+        "question": question, 
+        "apiKey": apiKey, 
+        "selectedModel": selectedModel
+    }
+    return compiled_graph.invoke(inputs)
 
 
 def run_all(question: str, apiKey: str):

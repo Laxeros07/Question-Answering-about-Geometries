@@ -1,5 +1,5 @@
 import PageTitle from "../components/PageTitle";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Map from "../components/Map";
 import { loadGeometries, findKeysRecursively, exportLayerToGeoJSON } from "../utils/map"; 
 import useChat from "../hooks/useChat";
@@ -8,12 +8,15 @@ import useApiKey from "../hooks/useApiKey";
 export default function Chat() {
   const mapInstanceRef = useRef(null);
   const { apiKey, showModal, setShowModal, setApiKey, saveKey } = useApiKey();
+  
+  // State for currently selected Model
+  const [selectedModel, setSelectedModel] = useState("gpt-5-nano"); 
 
   const handleDownload = (layerKey) => {
     if (mapInstanceRef.current) {
       exportLayerToGeoJSON(layerKey, mapInstanceRef.current, `${layerKey}.geojson`);
     } else {
-      alert("Karte wird noch geladen...");
+      alert("Map is currently loaded...");
     }
   };
 
@@ -26,8 +29,9 @@ export default function Chat() {
     loadGeometries(uniqueIDs, mapInstanceRef.current);
   };
 
+  // pass selectedModel to useChat
   const { messages, input, setInput, sendMessage, isLoading, handleKeyDown } =
-    useChat(apiKey, mapInstanceRef, handleGeoData);
+    useChat(apiKey, mapInstanceRef, handleGeoData, selectedModel);
 
   return (
     <>
@@ -67,12 +71,30 @@ export default function Chat() {
           {/* RIGHT SIDE */}
           <div className="col-lg-7 col-xs-12 mb-3">
             <div className="chat_window">
-              <div className="top_menu">
+              <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">ChatBot - Shadowfax</div>
-                <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowModal(true)}>
-                  Change API Key
-                </button>
+                
+                {/* LLM Selection Dropdown */}
+                <div className="d-flex gap-2">
+                  <select 
+                    className="form-select form-select-sm" 
+                    value={selectedModel} 
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    style={{ width: 'auto' }}
+                  >
+                    <option value="gpt-5-nano">GPT-5 Nano</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    {/* TODO: weitere Modelle aus der SAIA-Liste ergänzen */}
+                  </select>
+
+                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowModal(true)}>
+                    Change API Key
+                  </button>
+                </div>
               </div>
+              
               <ul className="messages">
                 {messages.map((msg, i) => (
                   <li key={i} className={`message ${msg.side} ${msg.appeared ? "appeared" : ""}`}>
@@ -104,13 +126,12 @@ export default function Chat() {
             </div>
           </div>
 
-          {/* LEFT SIDE (Karten-Sektion) */}
+          {/* LEFT SIDE */}
           <div className="col-lg-5 col-xs-12 mb-3">
             <div className="chat_window">
               <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">NRW</div>
                 
-                {/* --- DROPDOWN START --- */}
                 <div className="dropdown">
                   <button 
                     className="btn btn-sm btn-outline-primary dropdown-toggle" 
@@ -128,7 +149,6 @@ export default function Chat() {
                     <li><button className="dropdown-item" onClick={() => handleDownload('fsLayer')}>Federal States</button></li>
                   </ul>
                 </div>
-                {/* --- DROPDOWN END --- */}
               </div>
 
               <div className="panel-group">

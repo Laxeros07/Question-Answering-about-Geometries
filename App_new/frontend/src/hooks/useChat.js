@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { clearGeometries } from "../utils/map";
 import { API_BASE_URL } from "../utils/constants";
 
-export default function useChat(apiKey, mapInstanceRef, onGeoData) {
+export default function useChat(
+  apiKey,
+  mapInstanceRef,
+  onGeoData,
+  selectedModel,
+) {
   const [messages, setMessages] = useState([
     {
-      // Define starting message of the chatbot
       text: "Hello there! Ask me some questions about the geometry of NRW. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
       side: "left",
       time: new Date().toLocaleTimeString(),
@@ -19,7 +23,6 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    // Remove old geometries from the map
     if (mapInstanceRef.current) {
       clearGeometries(mapInstanceRef);
     }
@@ -37,46 +40,51 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
       },
     ]);
 
-    // Loading animation starts
     setIsLoading(true);
 
-    var data = null;
-
     try {
-      // Triggers the question-answering process in the backend and waits for the response
       const res = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: question,
           openAiKey: apiKey,
+          selectedModel: selectedModel,
         }),
       });
 
       if (!res.ok) throw new Error("Server error");
 
-      data = await res.json();
-      data = data.result;
+      const data = await res.json();
+      //console.log("Backend Response:", data);
+
+      const resultData = data.result.result;
+
+      if (!resultData || !resultData.verbalized) {
+        throw new Error(
+          "Unexpected response structure: " + JSON.stringify(data),
+        );
+      }
 
       setMessages((prev) => [
         ...prev,
         {
-          text: data.result.verbalized,
+          text: resultData.verbalized,
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,
         },
       ]);
 
-      // undefined, when an error occured.
-      if (data.result.start && onGeoData) {
-        onGeoData([data.result.start, ...data.result.target]);
+      if (resultData.start && onGeoData && resultData.target) {
+        onGeoData([resultData.start, ...resultData.target]);
       }
     } catch (err) {
+      console.error("DETAILED ERROR:", err);
       setMessages((prev) => [
         ...prev,
         {
-          text: "Backend not reachable (maybe backend has not been started)",
+          text: `Error: ${err.message}`,
           side: "left",
           time: new Date().toLocaleTimeString(),
           appeared: true,
@@ -86,7 +94,7 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
       setIsLoading(false);
     }
   };
-  // Send message when Enter is pressed
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

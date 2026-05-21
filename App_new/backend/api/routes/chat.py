@@ -9,12 +9,13 @@ router = APIRouter(prefix="/api/chat")
 class ChatRequest(BaseModel):
     message: str
     openAiKey: str
+    selectedModel: str
 
 @router.post("/")
 def chat(req: ChatRequest):
     # Starts the question-answering process and returns the result
     #result = run_query(req.message, req.openAiKey)
     #return {"result": json.loads(result)}
-    result = run_question(req.message, req.openAiKey)
+    result = run_question(req.message, req.openAiKey, req.selectedModel)
     return {"result": result}
     
