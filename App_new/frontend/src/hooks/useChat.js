@@ -76,6 +76,10 @@ export default function useChat(apiKey, mapInstanceRef, onGeoData) {
         onGeoData([data.result.start, ...data.result.target]);
       }
     } catch (err) {
+      // Backend not reachable
+      if (err instanceof TypeError) {
+        err.message = "Backend not reachable";
+      }
       setMessages((prev) => [
         ...prev,
         {
