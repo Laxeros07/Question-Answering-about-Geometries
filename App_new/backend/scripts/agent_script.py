@@ -58,11 +58,12 @@ Extract one of the following relationships if mentioned ("northern | southern | 
 """
 
 distance_constraint_description = """
-    - Extract ONLY if a distance constraint is mentioned
+    - Return a float value representing the distance constraint
     - Convert all numbers to numeric values (no strings)
+    - Calculate the distance constraint in meters (m)
     - Normalize units:
-    - "km", "kilometer" → km
-    - "m", "meter" → m
+        - "km", "kilometer" → km
+        - "m", "meter" → m
 """
 
 distance_between_description = """
@@ -70,11 +71,16 @@ distance_between_description = """
     - keywords: "between", "distance from X to Y", "What is the distance.."
 """
 
-hierachy_assignment_description = """
+radius_description = """
+    - TRUE only if the question explicitly states a radius or distance constraint without comparing two entities
+    - Keywords: "within a radius of X km/m", "in a radius of X km/m", "within X km/m distance", "in X km/m distance"
+"""
+
+hierarchy_assignment_description = """
     - Assign the entities to one of the following hierarchies:
     City < District < AdministrativeDistrict < FederalState
 
-    - Always return the answer as a list of lists of the format [[entity_name,hierarchy],[...]]
+    - Always return the answer as a list of lists of the format [[entity_name, hierarchy],[...]]
 
     Rules:
     - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
@@ -90,6 +96,11 @@ hierachy_assignment_description = """
         - If asking "Which administrative Districts lie next to (border) ..." → [entity_name, "AdministrativeDistrict"]
         - If asking "Which Districts lie next to (border) ..." → [entity_name, "District"]
         - If asking "Which federal States lie next to (border) ..." → [entity_name, "FederalState"]
+    - If no type is stated assign the type "City" or if the following german words are in the name, use them:
+        - If "Stadt" in the name → "City"
+        - If "Kreis" in the name → "District"
+        - If "Regierungsbezirk" in the name → "AdministrativeDistrict"
+        - If "Bundesland" in the name → "FederalState"
 """
 
 spatial_entities_description = """
@@ -114,9 +125,10 @@ class ParameterExtraction(BaseModel):
     spatial_relationship: str = Field(description=relationship_description)
     cardinal_direction: str = Field(description=cardinal_direction_description)
     spatial_entities: List[str]  = Field(description=spatial_entities_description)
-    distance_constraint: str  = Field(description=distance_constraint_description)
-    distance_between: str = Field(description=distance_between_description)
-    hierarchy: List[List[str]] = Field(description=hierachy_assignment_description)
+    distance_constraint: float = Field(description=distance_constraint_description)
+    radius: bool = Field(description=radius_description),
+    distance_between: bool = Field(description=distance_between_description)
+    hierarchy: List[List[str]] = Field(description=hierarchy_assignment_description)
     target_type: str = Field(description=target_type_description)
 
 class AgentState(TypedDict):
@@ -129,7 +141,8 @@ class AgentState(TypedDict):
     cardinal_direction: str
     distance_between: bool
     spatial_entities: str
-    distance_constraint: str
+    distance_constraint: float
+    radius: bool
     hierarchy: str
     target_type: str
 
@@ -157,6 +170,7 @@ def interpret_query(state):
             "spatial_relationship": response.spatial_relationship,
             "cardinal_direction": response.cardinal_direction,
             "distance_between": response.distance_between,
+            "radius": response.radius,
             "spatial_entities": response.spatial_entities,
             "distance_constraint": response.distance_constraint,
             "hierarchy": response.hierarchy,
@@ -341,10 +355,11 @@ def build_touches_query(state):
 # relates
 
 def select_relates_type(state):
-    if state.get("distance_between"):
+    
+    if state["distance_between"] == True:
         return "distance_between"
 
-    if state.get("radius"):
+    if state["radius"] == True:
         return "radius"
 
     if state.get("cardinal_direction"):
@@ -392,10 +407,7 @@ def build_direction_query(state):
     }
 
 def build_radius_query(state):
-    distance = state.get("radius")
-
-    op = distance.get("operator")
-    value = distance.get("value")
+    distance = state["distance_constraint"]
 
     query = f"""
     MATCH 
@@ -404,7 +416,7 @@ def build_radius_query(state):
     -[r:relates]->(g2:Geometry)
     <-[:hasFootprint]-(other:{state["hierarchy"][0][1]})
 
-    WHERE r.Distance_between {op} {value}
+    WHERE r.Distance_between <= {distance}
 
     WITH start, collect(DISTINCT {{
         id: other.ID,
@@ -604,7 +616,7 @@ if __name__ == "__main__":
     #for q in questions:
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
-    example_question = "What lies northern of Münster?"
+    example_question = "What lies 10km from Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key)
