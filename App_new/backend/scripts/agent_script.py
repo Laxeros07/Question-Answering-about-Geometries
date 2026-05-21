@@ -43,6 +43,7 @@ Classify the question into one of these spatial_relationships:
     - "within": hierarchical containment (lies in, belongs to, is in)
     - "touches": geographic neighbors (lies next to, is next to, touches)
     - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
+    - "None": if none of the above apply
 """
 
 cardinal_direction_description = """
@@ -132,6 +133,7 @@ class AgentState(TypedDict):
     distance_constraint: str
     hierarchy: str
     target_type: str
+    route: str
 
     # OUTPUT
     cypher_query: str
@@ -151,17 +153,26 @@ def interpret_query(state):
     model = ChatOpenAI(model="gpt-5-mini", temperature=1)
     structured_llm = model.with_structured_output(schema=ParameterExtraction)
     response = structured_llm.invoke(question)
-    return {
+
+    if response.spatial_relationship == "None":
+        return {
             **state,
-            "language": response.language,
-            "spatial_relationship": response.spatial_relationship,
-            "cardinal_direction": response.cardinal_direction,
-            "distance_between": response.distance_between,
-            "spatial_entities": response.spatial_entities,
-            "distance_constraint": response.distance_constraint,
-            "hierarchy": response.hierarchy,
-            "target_type": response.target_type
-            }
+            "result": None,
+            "route": "verbalize"
+        }
+
+    return {
+        **state,
+        "language": response.language,
+        "spatial_relationship": response.spatial_relationship,
+        "cardinal_direction": response.cardinal_direction,
+        "distance_between": response.distance_between,
+        "spatial_entities": response.spatial_entities,
+        "distance_constraint": response.distance_constraint,
+        "hierarchy": response.hierarchy,
+        "target_type": response.target_type,
+        "route": "add_inheritance"
+    }
 
 
 # Inheritance
@@ -481,9 +492,22 @@ Rules:
     - A = Administrative District
     - F = Federal State
   include the level in the answer but NOT the id
+
+- If the result is empty answer:
+    "Hello. This chatbot answers only questions about the geometries of Germany. Please try again with a different question."
 - The Result is never a question
 - Put only the result in the Answer NEVER the question
 """
+    if state['result']==None:
+        return {
+            **state,
+            "result": {
+                "verbalized": llm.invoke(prompt).content,
+                "start": None,
+                "target": None,
+            }
+        }
+
     return {
         **state,
         "result": {
@@ -514,7 +538,15 @@ workflow.add_node("execute_query", execute_query)
 workflow.add_node("verbalize", verbalize)
 
 workflow.add_edge(START, "interpret_query")
-workflow.add_edge("interpret_query", "add_inheritance")
+
+workflow.add_conditional_edges(
+    "interpret_query",
+    lambda state: state.get("route"),
+    {
+        "verbalize": "verbalize",
+        "add_inheritance": "add_inheritance"
+    }
+)
 
 workflow.add_conditional_edges(
     "add_inheritance",
@@ -603,7 +635,7 @@ if __name__ == "__main__":
     #for q in questions:
     #    result = compiled_graph.invoke({"question": q})
     #    fancy_print(result)
-    example_question = "In which district lies Bocholt?"
+    example_question = "you stink"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key)
