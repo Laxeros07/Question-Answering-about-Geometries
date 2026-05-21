@@ -20,20 +20,20 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 load_dotenv()  # Loads env variables from .env file
 
-llm = None
+#llm = None
 graph = None
 
 
-def build_chain(apiKey):
-    global llm, graph
-    os.environ["OPENAI_API_KEY"] = apiKey
-
-    llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0)
+# function only executed once when starting the app
+def init_db():
+    global graph
     graph = Neo4jGraph(
         url="neo4j://localhost:7687",
         username="neo4j",
         password="chatwithgermany"
     )
+
+init_db()
 
 # Pydantic and llm_with_structured_output
 
@@ -43,6 +43,7 @@ Classify the question into one of these spatial_relationships:
     - "within": hierarchical containment (lies in, belongs to, is in)
     - "touches": geographic neighbors (lies next to, is next to, touches)
     - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
+    - "None": if none of the above apply
 """
 
 cardinal_direction_description = """
@@ -134,6 +135,8 @@ class ParameterExtraction(BaseModel):
 class AgentState(TypedDict):
     # INPUT
     question: str
+    apiKey: str
+    selectedModel: str
 
     # Parameter
     language: str
@@ -145,6 +148,7 @@ class AgentState(TypedDict):
     radius: bool
     hierarchy: str
     target_type: str
+    route: str
 
     # OUTPUT
     cypher_query: str
@@ -161,9 +165,29 @@ HIERARCHY = [
 # Interpret Query
 def interpret_query(state):
     question = state['question']
-    model = ChatOpenAI(model="gpt-5-mini", temperature=1)
+    api_key = state['apiKey']
+    model_name = state['selectedModel']
+
+    # initialize LLM
+    global llm
+    llm = ChatOpenAI(openai_api_key=api_key, model=model_name, temperature=0)
+    model = ChatOpenAI(
+        openai_api_key=api_key, 
+        model=model_name, 
+        temperature=0
+    )
+    llm = model
+
     structured_llm = model.with_structured_output(schema=ParameterExtraction)
     response = structured_llm.invoke(question)
+
+    if response.spatial_relationship == "None":
+        return {
+            **state,
+            "result": None,
+            "route": "verbalize"
+        }
+
     return {
             **state,
             "language": response.language,
@@ -174,7 +198,8 @@ def interpret_query(state):
             "spatial_entities": response.spatial_entities,
             "distance_constraint": response.distance_constraint,
             "hierarchy": response.hierarchy,
-            "target_type": response.target_type
+            "target_type": response.target_type,
+            "route": "add_inheritance"
             }
 
 
@@ -471,10 +496,9 @@ def build_distance_between_query(state):
 
 # execute query
 def execute_query(state):
+    global graph
     result = graph.query(state["cypher_query"])
-
     cleaned = [r["result"] for r in result]
-
     return {**state, "result": cleaned}
 
 # answer
@@ -493,10 +517,23 @@ Rules:
     - A = Administrative District
     - F = Federal State
   include the level in the answer but NOT the id
+
+- If the result is empty answer:
+    "Hello. This chatbot answers only questions about the geometries of Germany. Please try again with a different question."
 - The Result is never a question
 - Put only the result in the Answer NEVER the question
 - Do not use Markdown or code formatting in the answer, just plain text
 """
+    if state['result']==None:
+        return {
+            **state,
+            "result": {
+                "verbalized": llm.invoke(prompt).content,
+                "start": None,
+                "target": None,
+            }
+        }
+
     return {
         **state,
         "result": {
@@ -527,7 +564,15 @@ workflow.add_node("execute_query", execute_query)
 workflow.add_node("verbalize", verbalize)
 
 workflow.add_edge(START, "interpret_query")
-workflow.add_edge("interpret_query", "add_inheritance")
+
+workflow.add_conditional_edges(
+    "interpret_query",
+    lambda state: state.get("route"),
+    {
+        "verbalize": "verbalize",
+        "add_inheritance": "add_inheritance"
+    }
+)
 
 workflow.add_conditional_edges(
     "add_inheritance",
@@ -592,10 +637,14 @@ def fancy_print(result):
 
     console.print("\n" + "═"*80 + "\n")
 
-def run_question(question: str, apiKey: str):
-    """Initialize LLM and Neo4j and execute the question."""
-    build_chain(apiKey)
-    return compiled_graph.invoke({"question": question})
+def run_question(question: str, apiKey: str, selectedModel: str):
+    """Execute the question using the graph."""
+    inputs = {
+        "question": question, 
+        "apiKey": apiKey, 
+        "selectedModel": selectedModel
+    }
+    return compiled_graph.invoke(inputs)
 
 
 def run_all(question: str, apiKey: str):
