@@ -5,12 +5,95 @@ import { loadGeometries, findKeysRecursively, exportLayerToGeoJSON } from "../ut
 import useChat from "../hooks/useChat";
 import useApiKey from "../hooks/useApiKey";
 
+//const SAIA_BASE_URL = "https://chat-ai.academiccloud.de/v1";
+
+// Fallback models in case the API is unavailable
+const SAIA_MODELS = [
+  { id: "meta-llama-3.1-8b-instruct", name: "meta-llama-3.1-8b-instruct" },
+  { id: "llama-3.3-70b-instruct", name: "llama-3.3-70b-instruct" },
+  { id: "mistral-large-3-675b-instruct-2512", name: "mistral-large-3-675b-instruct-2512" },
+  { id: "qwen3.6-35b-a3b", name: "qwen3.6-35b-a3b" },
+  { id: "teuken-7b-instruct-research", name: "teuken-7b-instruct-research" },
+  { id: "gemma-4-31b-it", name: "gemma-4-31b-it" },
+];
+
+const OPENAI_MODELS = [
+  { id: "gpt-5-nano", name: "gpt-5-nano" },
+  { id: "gpt-4o", name: "gpt-4o" },
+  { id: "gpt-4-turbo", name: "gpt-4-turbo" },
+  { id: "gpt-3.5-turbo", name: "gpt-3.5-turbo" },
+];
+
+// List of all valid IDs
+const ALL_MODEL_IDS = [
+  ...OPENAI_MODELS.map(m => m.id),
+  ...SAIA_MODELS.map(m => m.id),
+];
+
+const DEFAULT_MODEL = "gpt-5-nano";
+
 export default function Chat() {
   const mapInstanceRef = useRef(null);
   const { apiKey, showModal, setShowModal, setApiKey, saveKey } = useApiKey();
   
-  // State for currently selected Model
-  const [selectedModel, setSelectedModel] = useState("gpt-5-nano"); 
+  // Secure initialization with validation
+  const [selectedModel, setSelectedModel] = useState(() => {
+    const stored = localStorage.getItem("selectedModel");
+    if (stored && ALL_MODEL_IDS.includes(stored)) {
+      console.log("Loaded model from localStorage:", stored);
+      return stored;
+    }
+    console.log("Using default model:", DEFAULT_MODEL);
+    return DEFAULT_MODEL;
+  });
+
+  const isGwdgModel = !selectedModel.startsWith("gpt-");
+
+  // Debug on change
+  const handleModelChange = (e) => {
+    const newModel = e.target.value;
+    console.log("Model changed:", selectedModel, "→", newModel);
+    setSelectedModel(newModel);
+    localStorage.setItem("selectedModel", newModel);
+  };
+
+
+  /** 
+  // load SAIA-Models dynamically, when API-Key is there
+  useEffect(() => {
+    if (!apiKey) return;
+    
+    setLoadingModels(true);
+    fetch(`${SAIA_BASE_URL}/models`, {
+      headers: {
+        "Accept": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        // SAIA sends { data: [{id: "model-name", ...}, ...] }
+        if (data?.data && Array.isArray(data.data)) {
+          const models = data.data.map((m) => ({
+            id: m.id,
+            name: m.id
+              .split("-")
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(" "),
+          }));
+          setSaiaModels(models);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not load SAIA models, using fallback:", err);
+        // Fallback bleibt aktiv
+      })
+      .finally(() => setLoadingModels(false));
+  }, [apiKey]);*/
 
   const handleDownload = (layerKey) => {
     if (mapInstanceRef.current) {
@@ -41,11 +124,15 @@ export default function Chat() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content">
                 <div className="modal-header d-flex justify-content-between">
-                  <h4 className="modal-title">OpenAI API Key</h4>
+                  <h4 className="modal-title">
+                    {isGwdgModel ? "GWDG SAIA" : "OpenAI"} API Key
+                  </h4>
                   <button className="btn-close" onClick={() => setShowModal(false)} />
                 </div>
                 <div className="modal-body">
-                  <p>Enter your OpenAI API key:</p>
+                  <p>
+                    Enter your {isGwdgModel ? "GWDG SAIA" : "OpenAI"} API key:
+                  </p>
                   <input
                     className="form-control"
                     type="password"
@@ -53,10 +140,26 @@ export default function Chat() {
                     onChange={(e) => setApiKey(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") saveKey(); }}
                   />
-                  <p className="fst-italic fw-light mt-2">Without key, Chat with Germany won't work.</p>
+                  <p className="fst-italic fw-light mt-2">
+                    Without key, Chat with NRW won't work.
+                  </p>
+                  {isGwdgModel && (
+                    <p className="small text-muted mt-2">
+                      Get your free GWDG SAIA key at{" "}
+                      <a 
+                        href="https://docs.hpc.gwdg.de/services/saia/index.html" 
+                        target="_blank" 
+                        rel="noreferrer"
+                      >
+                        GWDG SAIA documentation
+                      </a>.
+                    </p>
+                  )}
                 </div>
                 <div className="modal-footer">
-                  <button className="btn saveBtn btn-danger ms-auto" onClick={saveKey}>Save key</button>
+                  <button className="btn saveBtn btn-danger ms-auto" onClick={saveKey}>
+                    Save key
+                  </button>
                 </div>
               </div>
             </div>
@@ -68,28 +171,49 @@ export default function Chat() {
       <PageTitle title="Chat" />
       <div className="container">
         <div className="row gy-4 gx-lg-3 mt-3">
-          {/* RIGHT SIDE */}
+          {/* LEFT SIDE - Chat */}
           <div className="col-lg-7 col-xs-12 mb-3">
             <div className="chat_window">
               <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">ChatBot - Shadowfax</div>
                 
                 {/* LLM Selection Dropdown */}
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2 align-items-center">
+                  {/* Provider Badge */}
+                  <span 
+                    className={`badge ${isGwdgModel ? "bg-success" : "bg-primary"}`}
+                    title={isGwdgModel ? "Using GWDG SAIA" : "Using OpenAI"}
+                  >
+                    {isGwdgModel ? "SAIA" : "OpenAI"}
+                  </span>
+
                   <select 
                     className="form-select form-select-sm" 
                     value={selectedModel} 
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    style={{ width: 'auto' }}
+                    onChange={handleModelChange}
+                    style={{ width: 'auto', maxWidth: '200px' }}
                   >
-                    <option value="gpt-5-nano">GPT-5 Nano</option>
-                    <option value="gpt-4o">GPT-4o</option>
-                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                    {/* TODO: weitere Modelle aus der SAIA-Liste ergänzen */}
+                    <optgroup label="OpenAI">
+                      {OPENAI_MODELS.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))}
+                    </optgroup>
+
+                    <optgroup label="GWDG SAIA">
+                      {SAIA_MODELS.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
 
-                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowModal(true)}>
+                  <button 
+                    className="btn btn-sm btn-outline-secondary" 
+                    onClick={() => setShowModal(true)}
+                  >
                     Change API Key
                   </button>
                 </div>
@@ -126,7 +250,7 @@ export default function Chat() {
             </div>
           </div>
 
-          {/* LEFT SIDE */}
+          {/* RIGHT SIDE - Map */}
           <div className="col-lg-5 col-xs-12 mb-3">
             <div className="chat_window">
               <div className="top_menu d-flex justify-content-between align-items-center">
@@ -142,7 +266,10 @@ export default function Chat() {
                   >
                     Download Data as GeoJSON
                   </button>
-                  <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="downloadDropdown">
+                  <ul 
+                    className="dropdown-menu dropdown-menu-end download-dropdown" 
+                    aria-labelledby="downloadDropdown"
+                  >
                     <li><button className="dropdown-item" onClick={() => handleDownload('cityLayer')}>Cities</button></li>
                     <li><button className="dropdown-item" onClick={() => handleDownload('districtLayer')}>Districts</button></li>
                     <li><button className="dropdown-item" onClick={() => handleDownload('adLayer')}>Admin Districts</button></li>

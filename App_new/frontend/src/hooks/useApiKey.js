@@ -13,13 +13,37 @@ export default function useApiKey() {
     }
   }, []);
 
+  // validate if key is compatible with OpenAI or SAIA
+  const validateKey = (key) => {
+    if (!key || key.trim().length === 0) {
+      return "Key cannot be empty";
+    }
+
+    // OpenAI Keys start with "sk-"
+    if (key.startsWith("sk-")) {
+      if (key.length < 20) {
+        return "OpenAI key seems too short";
+      }
+      return null;
+    }
+
+    // GWDG SAIA Keys: alphanumerical Strings
+    if (key.length >= 20) {
+      return null;
+    }
+
+    return "Invalid key format. Expected OpenAI (sk-...) or GWDG SAIA key.";
+  };
+
   // API key is stored in the local storage of the browser.
   const saveKey = () => {
-    if (!apiKey.startsWith("sk-")) {
-      alert("Invalid key format");
+    const error = validateKey(apiKey);
+    if (error) {
+      alert(error);
       return;
     }
-    localStorage.setItem("openai_key", apiKey);
+
+    localStorage.setItem("apiKey", apiKey);
     setShowModal(false);
   };
 

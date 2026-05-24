@@ -53,12 +53,22 @@ export default function useChat(
         }),
       });
 
-      const data = await res.json();
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        // Response was not a JSON
+      }
 
       if (!res.ok) {
         throw new Error(data.details || data.error || "Unknown server error");
       }
+
+      //const data = await res.json();
       //console.log("Backend Response:", data);
+      if (!data) {
+        throw new Error("Empty response from server");
+      }
 
       const resultData = data.result.result;
 
