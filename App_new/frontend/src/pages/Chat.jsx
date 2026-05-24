@@ -49,12 +49,23 @@ export default function Chat() {
 
   const isGwdgModel = !selectedModel.startsWith("gpt-");
 
-  // Debug on change
+  const [showProviderWarning, setShowProviderWarning] = useState(false);
+
   const handleModelChange = (e) => {
     const newModel = e.target.value;
-    console.log("Model changed:", selectedModel, "→", newModel);
+    console.log("Model changed:", selectedModel, "->", newModel);
+    const wasGwdg = !selectedModel.startsWith("gpt-");
+    const isNowGwdg = !newModel.startsWith("gpt-");
+    const providerChanged = wasGwdg !== isNowGwdg;
+    
     setSelectedModel(newModel);
     localStorage.setItem("selectedModel", newModel);
+    
+    if (providerChanged) {
+      setShowProviderWarning(true);
+      // show warning for only 8 seconds
+      // setTimeout(() => setShowProviderWarning(false), 8000);
+    }
   };
 
 
@@ -218,6 +229,29 @@ export default function Chat() {
                   </button>
                 </div>
               </div>
+              {showProviderWarning && (
+                <div 
+                  className="alert alert-warning alert-dismissible fade show m-2 py-2" 
+                  role="alert"
+                >
+                  <strong>Provider changed!</strong>{" "}
+                  You're now using {isGwdgModel ? "GWDG SAIA" : "OpenAI"}.{" "}
+                  <button 
+                    className="btn btn-sm btn-warning ms-2"
+                    onClick={() => { 
+                      setShowModal(true); 
+                      setShowProviderWarning(false); 
+                    }}
+                  >
+                    Update API Key
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn-close" 
+                    onClick={() => setShowProviderWarning(false)}
+                  ></button>
+                </div>
+              )}
               
               <ul className="messages">
                 {messages.map((msg, i) => (
