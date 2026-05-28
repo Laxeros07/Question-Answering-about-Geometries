@@ -1,11 +1,7 @@
 import PageTitle from "../components/PageTitle";
 import { useRef, useState } from "react";
 import Map from "../components/Map";
-import {
-  loadGeometries,
-  findKeysRecursively,
-  exportLayerToGeoJSON,
-} from "../utils/map";
+import { loadGeometries, exportLayerToGeoJSON } from "../utils/map";
 import useChat from "../hooks/useChat";
 import useApiKey from "../hooks/useApiKey";
 
