@@ -23,6 +23,8 @@ from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 load_dotenv()  # Loads env variables from .env file
 
+import spatial_relation_functions as srf
+
 #llm = None
 graph = None
 
@@ -756,8 +758,7 @@ def build_distance_between_query(state):
             id: a.ID,
             name: a.Name
         }},
-        target: target,
-        distance: r.Distance_between
+        target: target
     }} AS result
     """
     return {**state, "cypher_query": query}
@@ -767,6 +768,11 @@ def execute_query(state):
     global graph
     result = graph.query(state["cypher_query"])
     cleaned = [r["result"] for r in result]
+
+    # adds the distance to the result (only works with two entities)
+    if state["distance_between"] == True:
+        cleaned = srf.calculate_distances(cleaned)
+
     return {**state, "result": cleaned}
 
 # answer
@@ -912,7 +918,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What lies 10km from Münster?"
+    example_question = "What is the distance between Selm and Bocholt?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")
