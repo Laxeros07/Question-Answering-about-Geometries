@@ -15,7 +15,7 @@ import json
 def get_geometries(ids):
 
     # loading dataframe
-    csv_path = Path("App_new\\backend\data\geometries.csv")
+    csv_path = Path("App_new/backend/data/geometries.csv")
     df = pd.read_csv(csv_path)
 
     geometries = []
