@@ -37,7 +37,7 @@ def write_within(within):
     df_lies_in.to_csv('Graph\within.csv', index=False, sep = ",")
 
 def write_touches(touches):
-    with open('Graph\touches.csv', 'w', newline='') as file:
+    with open('Graph\\touches.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["StartID", "EndID", "Rel_Position"])
         writer.writerows(touches)

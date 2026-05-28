@@ -44,8 +44,8 @@ init_db()
 
 relationship_description = """
 Classify the question into one of these spatial_relationships:
-    - "location": the geographic position (Where lies, Where is located) 
-    - "within": hierarchical containment (lies in, belongs to, is in)
+    - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
+    - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
     - "touches": geographic neighbors (lies next to, is next to, touches)
     - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
     - "None": if none of the above apply
@@ -79,7 +79,7 @@ distance_between_description = """
 
 radius_description = """
     - TRUE only if the question explicitly states a radius or distance constraint without comparing two entities
-    - Keywords: "within a radius of X km/m", "in a radius of X km/m", "within X km/m distance", "in X km/m distance"
+    - Keywords: "within a radius of X km/m", "in a radius of X km/m", "within X km/m distance", "in X km/m distance", "X km/m from", "X km/m around", "X km/m near", "X km/m close to"
 """
 
 hierarchy_assignment_description = """
@@ -134,7 +134,7 @@ class ParameterExtraction(BaseModel):
     distance_constraint: Optional[float] = Field(default=None, description=distance_constraint_description)
     radius: Optional[bool] = Field(default=False, description=radius_description)
     distance_between: bool = Field(description=distance_between_description)
-    hierarchy: List[List[str]] = Field(description=hierarchy_assignment_description)
+    hierarchy: Optional[List[List[str]]] = Field(default=None, description=hierarchy_assignment_description)
     target_type: str = Field(description=target_type_description)
 
     # Validators for checking if the variables fit the model (and corrections if necessary)
@@ -218,12 +218,12 @@ class AgentState(TypedDict):
     # Parameters
     language: str
     spatial_relationship: str
-    cardinal_direction: str
+    cardinal_direction: Optional[str]
     distance_between: bool
     spatial_entities: str
-    distance_constraint: float
+    distance_constraint: Optional[float]
     radius: bool
-    hierarchy: str
+    hierarchy: Optional[List[List[str]]]
     target_type: str
     route: str
 
@@ -246,14 +246,14 @@ def get_llm_config(model_name, api_key):
         return {
             "openai_api_key": api_key,
             "model": model_name,
-            "temperature": 0,
+            "temperature": 1,
         }
     else:
         # SAIA / GWDG
         return {
             "openai_api_key": api_key,
             "model": model_name,
-            "temperature": 0,
+            "temperature": 1,
             "base_url": "https://chat-ai.academiccloud.de/v1",
         }
 
@@ -660,6 +660,12 @@ def select_relates_type(state):
     if state.get("cardinal_direction"):
         return "direction"
 
+    # Fallback when the model returned a distance constraint
+    # but did not explicitly set radius=True.
+    if state.get("distance_constraint", 0) > 0:
+        print("Radius was manually set to True based on distance_constraint")
+        return "radius"
+
     return "direction"
 
 def add_relates_type(state):
@@ -918,7 +924,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What is the distance between Selm and Bocholt?"
+    example_question = "What lies eastern from Bocholt?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")

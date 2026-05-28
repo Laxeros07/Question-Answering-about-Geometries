@@ -100,5 +100,5 @@ export default function Map({ mapInstanceRef }) {
     };
   }, [mapInstanceRef]);
 
-  return <div ref={mapRef} style={{ height: "470px", width: "100%" }} />;
+  return <div ref={mapRef} style={{ height: "100%", width: "100%" }} />;
 }

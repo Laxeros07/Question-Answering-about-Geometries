@@ -21,6 +21,9 @@ body {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
   background-color: #f8f8f8;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .top_menu {
@@ -48,7 +51,7 @@ body {
   padding: 20px 10px 0 10px;
   margin: 0;
   height: 400px;
-  overflow: scroll;
+  overflow-y: scroll;
 }
 
 .messages .message {
@@ -249,10 +252,14 @@ body {
 
 .panel-group {
   padding: 5px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .panel-group > div {
   width: calc(100% - 10px) !important;
+  flex: 1;
 }
 
 .panel-heading [data-toggle="collapse"]:after {

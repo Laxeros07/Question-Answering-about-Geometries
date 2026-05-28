@@ -1,7 +1,11 @@
 import PageTitle from "../components/PageTitle";
 import { useRef, useState } from "react";
 import Map from "../components/Map";
-import { loadGeometries, findKeysRecursively, exportLayerToGeoJSON } from "../utils/map"; 
+import {
+  loadGeometries,
+  findKeysRecursively,
+  exportLayerToGeoJSON,
+} from "../utils/map";
 import useChat from "../hooks/useChat";
 import useApiKey from "../hooks/useApiKey";
 
@@ -11,7 +15,10 @@ import useApiKey from "../hooks/useApiKey";
 const SAIA_MODELS = [
   { id: "meta-llama-3.1-8b-instruct", name: "meta-llama-3.1-8b-instruct" },
   { id: "llama-3.3-70b-instruct", name: "llama-3.3-70b-instruct" },
-  { id: "mistral-large-3-675b-instruct-2512", name: "mistral-large-3-675b-instruct-2512" },
+  {
+    id: "mistral-large-3-675b-instruct-2512",
+    name: "mistral-large-3-675b-instruct-2512",
+  },
   { id: "qwen3.6-35b-a3b", name: "qwen3.6-35b-a3b" },
   { id: "teuken-7b-instruct-research", name: "teuken-7b-instruct-research" },
   { id: "gemma-4-31b-it", name: "gemma-4-31b-it" },
@@ -26,8 +33,8 @@ const OPENAI_MODELS = [
 
 // List of all valid IDs
 const ALL_MODEL_IDS = [
-  ...OPENAI_MODELS.map(m => m.id),
-  ...SAIA_MODELS.map(m => m.id),
+  ...OPENAI_MODELS.map((m) => m.id),
+  ...SAIA_MODELS.map((m) => m.id),
 ];
 
 const DEFAULT_MODEL = "gpt-5-nano";
@@ -35,7 +42,7 @@ const DEFAULT_MODEL = "gpt-5-nano";
 export default function Chat() {
   const mapInstanceRef = useRef(null);
   const { apiKey, showModal, setShowModal, setApiKey, saveKey } = useApiKey();
-  
+
   // Secure initialization with validation
   const [selectedModel, setSelectedModel] = useState(() => {
     const stored = localStorage.getItem("selectedModel");
@@ -57,17 +64,16 @@ export default function Chat() {
     const wasGwdg = !selectedModel.startsWith("gpt-");
     const isNowGwdg = !newModel.startsWith("gpt-");
     const providerChanged = wasGwdg !== isNowGwdg;
-    
+
     setSelectedModel(newModel);
     localStorage.setItem("selectedModel", newModel);
-    
+
     if (providerChanged) {
       setShowProviderWarning(true);
       // show warning for only 8 seconds
       // setTimeout(() => setShowProviderWarning(false), 8000);
     }
   };
-
 
   /** 
   // load SAIA-Models dynamically, when API-Key is there
@@ -108,7 +114,11 @@ export default function Chat() {
 
   const handleDownload = (layerKey) => {
     if (mapInstanceRef.current) {
-      exportLayerToGeoJSON(layerKey, mapInstanceRef.current, `${layerKey}.geojson`);
+      exportLayerToGeoJSON(
+        layerKey,
+        mapInstanceRef.current,
+        `${layerKey}.geojson`,
+      );
     } else {
       alert("Map is currently loaded...");
     }
@@ -138,7 +148,10 @@ export default function Chat() {
                   <h4 className="modal-title">
                     {isGwdgModel ? "GWDG SAIA" : "OpenAI"} API Key
                   </h4>
-                  <button className="btn-close" onClick={() => setShowModal(false)} />
+                  <button
+                    className="btn-close"
+                    onClick={() => setShowModal(false)}
+                  />
                 </div>
                 <div className="modal-body">
                   <p>
@@ -149,7 +162,9 @@ export default function Chat() {
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") saveKey(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveKey();
+                    }}
                   />
                   <p className="fst-italic fw-light mt-2">
                     Without key, Chat with NRW won't work.
@@ -157,18 +172,22 @@ export default function Chat() {
                   {isGwdgModel && (
                     <p className="small text-muted mt-2">
                       Get your free GWDG SAIA key at{" "}
-                      <a 
-                        href="https://docs.hpc.gwdg.de/services/saia/index.html" 
-                        target="_blank" 
+                      <a
+                        href="https://docs.hpc.gwdg.de/services/saia/index.html"
+                        target="_blank"
                         rel="noreferrer"
                       >
                         GWDG SAIA documentation
-                      </a>.
+                      </a>
+                      .
                     </p>
                   )}
                 </div>
                 <div className="modal-footer">
-                  <button className="btn saveBtn btn-danger ms-auto" onClick={saveKey}>
+                  <button
+                    className="btn saveBtn btn-danger ms-auto"
+                    onClick={saveKey}
+                  >
                     Save key
                   </button>
                 </div>
@@ -181,28 +200,28 @@ export default function Chat() {
 
       <PageTitle title="Chat" />
       <div className="container">
-        <div className="row gy-4 gx-lg-3 mt-3">
+        <div className="row gy-4 gx-lg-3 mt-3 align-items-stretch">
           {/* LEFT SIDE - Chat */}
-          <div className="col-lg-7 col-xs-12 mb-3">
-            <div className="chat_window">
+          <div className="col-lg-7 col-xs-12 mb-3 d-flex">
+            <div className="chat_window w-100">
               <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">ChatBot - Shadowfax</div>
-                
+
                 {/* LLM Selection Dropdown */}
                 <div className="d-flex gap-2 align-items-center">
                   {/* Provider Badge */}
-                  <span 
+                  <span
                     className={`badge ${isGwdgModel ? "bg-success" : "bg-primary"}`}
                     title={isGwdgModel ? "Using GWDG SAIA" : "Using OpenAI"}
                   >
                     {isGwdgModel ? "SAIA" : "OpenAI"}
                   </span>
 
-                  <select 
-                    className="form-select form-select-sm" 
-                    value={selectedModel} 
+                  <select
+                    className="form-select form-select-sm"
+                    value={selectedModel}
                     onChange={handleModelChange}
-                    style={{ width: 'auto', maxWidth: '200px' }}
+                    style={{ width: "auto", maxWidth: "200px" }}
                   >
                     <optgroup label="OpenAI">
                       {OPENAI_MODELS.map((model) => (
@@ -221,8 +240,8 @@ export default function Chat() {
                     </optgroup>
                   </select>
 
-                  <button 
-                    className="btn btn-sm btn-outline-secondary" 
+                  <button
+                    className="btn btn-sm btn-outline-secondary"
                     onClick={() => setShowModal(true)}
                   >
                     Change API Key
@@ -230,32 +249,36 @@ export default function Chat() {
                 </div>
               </div>
               {showProviderWarning && (
-                <div 
-                  className="alert alert-warning alert-dismissible fade show m-2 py-2" 
+                <div
+                  className="alert alert-warning alert-dismissible fade show m-2 py-2"
                   role="alert"
                 >
-                  <strong>Provider changed!</strong>{" "}
-                  You're now using {isGwdgModel ? "GWDG SAIA" : "OpenAI"}.{" "}
-                  <button 
+                  <strong>Provider changed!</strong> You're now using{" "}
+                  {isGwdgModel ? "GWDG SAIA" : "OpenAI"}.{" "}
+                  <button
                     className="btn btn-sm btn-warning ms-2"
-                    onClick={() => { 
-                      setShowModal(true); 
-                      setShowProviderWarning(false); 
+                    onClick={() => {
+                      setShowModal(true);
+                      setShowProviderWarning(false);
                     }}
                   >
                     Update API Key
                   </button>
-                  <button 
-                    type="button" 
-                    className="btn-close" 
+                  <button
+                    type="button"
+                    className="btn-close"
                     onClick={() => setShowProviderWarning(false)}
+                    style={{ padding: "1rem" }}
                   ></button>
                 </div>
               )}
-              
+
               <ul className="messages">
                 {messages.map((msg, i) => (
-                  <li key={i} className={`message ${msg.side} ${msg.appeared ? "appeared" : ""}`}>
+                  <li
+                    key={i}
+                    className={`message ${msg.side} ${msg.appeared ? "appeared" : ""}`}
+                  >
                     {msg.side === "left" && <div className="avatar"></div>}
                     <div className="text_wrapper">
                       <div className="text">{msg.text}</div>
@@ -279,35 +302,65 @@ export default function Chat() {
                   onKeyDown={handleKeyDown}
                   placeholder="Say Hi to begin chat..."
                 />
-                <div className="app_button_1" onClick={sendMessage}>Send</div>
+                <div className="app_button_1" onClick={sendMessage}>
+                  Send
+                </div>
               </div>
             </div>
           </div>
 
           {/* RIGHT SIDE - Map */}
-          <div className="col-lg-5 col-xs-12 mb-3">
-            <div className="chat_window">
+          <div className="col-lg-5 col-xs-12 mb-3 d-flex">
+            <div className="chat_window w-100">
               <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">Germany</div>
-                
+
                 <div className="dropdown">
-                  <button 
-                    className="btn btn-sm btn-outline-primary dropdown-toggle" 
-                    type="button" 
-                    id="downloadDropdown" 
-                    data-bs-toggle="dropdown" 
+                  <button
+                    className="btn btn-sm btn-outline-primary dropdown-toggle"
+                    type="button"
+                    id="downloadDropdown"
+                    data-bs-toggle="dropdown"
                     aria-expanded="false"
                   >
                     Download Data as GeoJSON
                   </button>
-                  <ul 
-                    className="dropdown-menu dropdown-menu-end download-dropdown" 
+                  <ul
+                    className="dropdown-menu dropdown-menu-end download-dropdown"
                     aria-labelledby="downloadDropdown"
                   >
-                    <li><button className="dropdown-item" onClick={() => handleDownload('cityLayer')}>Cities</button></li>
-                    <li><button className="dropdown-item" onClick={() => handleDownload('districtLayer')}>Districts</button></li>
-                    <li><button className="dropdown-item" onClick={() => handleDownload('adLayer')}>Admin Districts</button></li>
-                    <li><button className="dropdown-item" onClick={() => handleDownload('fsLayer')}>Federal States</button></li>
+                    <li>
+                      <button
+                        className="dropdown-item"
+                        onClick={() => handleDownload("cityLayer")}
+                      >
+                        Cities
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        className="dropdown-item"
+                        onClick={() => handleDownload("districtLayer")}
+                      >
+                        Districts
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        className="dropdown-item"
+                        onClick={() => handleDownload("adLayer")}
+                      >
+                        Admin Districts
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        className="dropdown-item"
+                        onClick={() => handleDownload("fsLayer")}
+                      >
+                        Federal States
+                      </button>
+                    </li>
                   </ul>
                 </div>
               </div>
