@@ -42,7 +42,7 @@ init_db()
 
 relationship_description = """
 Classify the question into one of these spatial_relationships:
-    - "location": the geographic position (Where lies, Where is located) 
+    - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
     - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
     - "touches": geographic neighbors (lies next to, is next to, touches)
     - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
@@ -918,7 +918,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie 10km from Münster?"
+    example_question = "What lies eastern from Bocholt?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")
