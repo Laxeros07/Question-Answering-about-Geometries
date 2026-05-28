@@ -25,5 +25,5 @@ def main(generate=["all"]):
         write_relates(relates)
 
 if __name__ == "__main__":
-    main(generate=["layers"])
+    main(generate=["all"])
 
