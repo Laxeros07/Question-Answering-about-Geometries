@@ -26,7 +26,11 @@ from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 load_dotenv()  # Loads env variables from .env file
 
-from . import spatial_relation_functions as srf
+try:
+    from . import spatial_relation_functions as srf
+except (ImportError, SystemError):
+    # Allow running this file directly for local debugging:
+    import spatial_relation_functions as srf
 
 #llm = None
 graph = None
