@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 # Import und Setup
 # Install
 # pip install langgraph langchain langchain-openai neo4j

@@ -17,7 +17,7 @@ const SAIA_MODELS = [
   },
   { id: "qwen3.6-35b-a3b", name: "qwen3.6-35b-a3b" },
   { id: "teuken-7b-instruct-research", name: "teuken-7b-instruct-research" },
-  { id: "gemma-4-31b-it", name: "gemma-4-31b-it" },
+  //{ id: "gemma-4-31b-it", name: "gemma-4-31b-it" },
 ];
 
 const OPENAI_MODELS = [
