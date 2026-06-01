@@ -11,7 +11,6 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "leaflet/dist/leaflet.css";
 import "./styles/chat.css";
-import "./styles/loader.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
