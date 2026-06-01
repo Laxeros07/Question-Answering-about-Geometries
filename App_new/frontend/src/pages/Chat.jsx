@@ -286,7 +286,7 @@ export default function Chat() {
                 {isLoading && (
                   <li className="message left appeared">
                     <div className="avatar"></div>
-                    <div className="chat-loader"></div>
+                    <div className="l-gif"></div>
                   </li>
                 )}
               </ul>
