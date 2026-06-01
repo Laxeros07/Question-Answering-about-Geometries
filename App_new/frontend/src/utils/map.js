@@ -108,37 +108,6 @@ export function clearGeometries(mapRef) {
 }
 
 /**
- * Recursively search for keys in an object that match a certain pattern.
- */
-export function findKeysRecursively(obj, ids) {
-  let patternID = /[A-Z]*ID[A-Z]*/;
-  let patternName = /[A-Z]*Name[A-Z]*/;
-  if (obj === null || typeof obj !== "object") {
-    return;
-  }
-
-  let id = null;
-  let name = null;
-
-  Object.keys(obj).forEach((key) => {
-    if (patternID.test(key)) {
-      id = obj[key];
-    }
-    if (patternName.test(key)) {
-      name = obj[key];
-    }
-
-    if (typeof obj[key] === "object") {
-      findKeysRecursively(obj[key], ids);
-    }
-  });
-
-  if (id !== null) {
-    ids.push({ id: id, name: name });
-  }
-}
-
-/**
  * Fetches geometry data for the given search IDs.
  */
 export async function fetchGeometries(searchIDs) {
