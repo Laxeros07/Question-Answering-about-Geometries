@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 load_dotenv()  # Loads env variables from .env file
 
-import spatial_relation_functions as srf
+from . import spatial_relation_functions as srf
 
 #llm = None
 graph = None
@@ -778,6 +778,9 @@ def execute_query(state):
     # adds the distance to the result (only works with two entities)
     if state["distance_between"] == True:
         cleaned = srf.calculate_distances(cleaned)
+
+    if state.get("cardinal_direction"):
+        cleaned = srf.calculate_cardinal_direction(cleaned, state["cardinal_direction"])
 
     return {**state, "result": cleaned}
 
