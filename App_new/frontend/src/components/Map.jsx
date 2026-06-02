@@ -10,8 +10,8 @@ export default function Map({ mapInstanceRef }) {
 
     // Map initialisieren
     const map = L.map(mapRef.current).setView(
-      [51.51588878700843, 7.475327389339492],
-      7,
+      [51.3108555629218, 10.416905461296283],
+      5,
     );
 
     // To make the map globally
