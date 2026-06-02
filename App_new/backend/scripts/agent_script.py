@@ -21,7 +21,7 @@ import re
 import os
 
 from typing import List
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from dotenv import load_dotenv
 load_dotenv()  # Loads env variables from .env file
@@ -34,7 +34,6 @@ except (ImportError, SystemError):
 
 #llm = None
 graph = None
-
 
 # function only executed once when starting the app
 def init_db():
@@ -90,31 +89,56 @@ radius_description = """
 """
 
 hierarchy_assignment_description = """
-    - Assign the entities to one of the following hierarchies:
-    City < District < AdministrativeDistrict < FederalState
+    Assign every spatial entity a hierarchy type.
 
-    - Always return the answer as a NON EMPTY list of lists of the format [[entity_name, hierarchy],[...]]
+    Allowed hierarchy values:
+    - City
+    - District
+    - AdministrativeDistrict
+    - FederalState
+
+    Output format:
+    [[entity_name, hierarchy], [...]]
+    Example:
+    [["Münster", "City"], ["Borken", "District"]], [["Nordrhein-Westfalen", "FederalState"]]]
 
     Rules:
-    - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
-        - If "administrative District of" or "the administrative District ..." is in the question → [entity_name, "AdministrativeDistrict"]
-        - If "District of" or "the District ..." is in the question → [entity_name, "District"]
-        - If "federal State of" or "the federal State ..." is in the question → [entity_name, "FederalState"]
-
-        - If asking "Which Cities lie within ..." → [entity_name, "District"] or [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
-        - If asking "Which Districts lie within ..." → [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
-        - If asking "Which administrative Districts lie within ..." → [entity_name, "FederalState"]
-
-        - If asking "Which Cities lie next to (border) ..." → [entity_name, "City"]
-        - If asking "Which administrative Districts lie next to (border) ..." → [entity_name, "AdministrativeDistrict"]
-        - If asking "Which Districts lie next to (border) ..." → [entity_name, "District"]
-        - If asking "Which federal States lie next to (border) ..." → [entity_name, "FederalState"]
-    - If no type is stated assign the type "City" or, if the following german words are in the name, use them:
-        - If "Stadt" in the name → "City"
-        - If "Kreis" in the name → "District"
-        - If "Regierungsbezirk" in the name → "AdministrativeDistrict"
-        - If "Bundesland" in the name → "FederalState"
+    - Return one item for every entity in the question.
+    - Explicit type in question overrides defaults.
+    - Default hierarchy is City.
+    - German keywords:
+        Stadt -> City
+        Kreis -> District
+        Regierungsbezirk -> AdministrativeDistrict
+        Bundesland -> FederalState
 """
+
+# hierarchy_assignment_description = """
+#     - Assign the entities of the question to one of the following hierarchies:
+#     City < District < AdministrativeDistrict < FederalState
+
+#     - Always return the answer as a NON EMPTY list of lists of the format [[entity_name, hierarchy],[...]]
+
+#     Rules:
+#     - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
+#         - If "administrative District of" or "the administrative District ..." is in the question → [entity_name, "AdministrativeDistrict"]
+#         - If "District of" or "the District ..." is in the question → [entity_name, "District"]
+#         - If "federal State of" or "the federal State ..." is in the question → [entity_name, "FederalState"]
+
+#         - If asking "Which Cities lie within ..." → [entity_name, "District"] or [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
+#         - If asking "Which Districts lie within ..." → [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
+#         - If asking "Which administrative Districts lie within ..." → [entity_name, "FederalState"]
+
+#         - If asking "Which Cities lie next to (border) ..." → [entity_name, "City"]
+#         - If asking "Which administrative Districts lie next to (border) ..." → [entity_name, "AdministrativeDistrict"]
+#         - If asking "Which Districts lie next to (border) ..." → [entity_name, "District"]
+#         - If asking "Which federal States lie next to (border) ..." → [entity_name, "FederalState"]
+#     - If no type is stated assign the type "City" or, if the following german words are in the name, use them:
+#         - If "Stadt" in the name → "City"
+#         - If "Kreis" in the name → "District"
+#         - If "Regierungsbezirk" in the name → "AdministrativeDistrict"
+#         - If "Bundesland" in the name → "FederalState"
+# """
 
 spatial_entities_description = """
      REQUIRED: Always return a list of entity names mentioned in the question.
@@ -144,79 +168,8 @@ class ParameterExtraction(BaseModel):
     distance_constraint: Optional[float] = Field(default=None, description=distance_constraint_description)
     radius: Optional[bool] = Field(default=False, description=radius_description)
     distance_between: bool = Field(description=distance_between_description)
-    hierarchy: Optional[List[List[str]]] = Field(default=None, description=hierarchy_assignment_description)
+    hierarchy: List[List[str]] = Field(default=None, description=hierarchy_assignment_description)
     target_type: str = Field(description=target_type_description)
-
-    # Validators for checking if the variables fit the model (and corrections if necessary)
-
-    # String fields: List → first element
-    @field_validator(
-        'language', 'spatial_relationship', 'cardinal_direction', 'target_type',
-        mode='before'
-    )
-    @classmethod
-    def coerce_list_to_string(cls, v):
-        if isinstance(v, list):
-            return str(v[0]) if len(v) > 0 else ""
-        if v is None:
-            return ""
-        return v
-
-    # spatial_entities: String → List
-    @field_validator('spatial_entities', mode='before')
-    @classmethod
-    def coerce_string_to_list(cls, v):
-        if isinstance(v, str):
-            return [v] if v else []
-        if v is None:
-            return []
-        return v
-
-    # hierarchy: normalize different formats
-    @field_validator('hierarchy', mode='before')
-    @classmethod
-    def normalize_hierarchy(cls, v):
-        if v is None:
-            return []
-        if isinstance(v, str):
-            return [[v]] if v else []
-        if isinstance(v, list):
-            if len(v) == 0:
-                return []
-            if all(isinstance(item, str) for item in v):
-                return [v]
-            return [
-                [str(x) for x in sublist] if isinstance(sublist, list) else [str(sublist)]
-                for sublist in v
-            ]
-        return v
-
-    # distance_constraint: String/None → float
-    @field_validator('distance_constraint', mode='before')
-    @classmethod
-    def coerce_to_float(cls, v):
-        if v is None or v == "":
-            return 0.0
-        if isinstance(v, list):
-            v = v[0] if v else 0.0
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return 0.0
-
-    # Bool-Fields: String "true"/"false" → True/False
-    @field_validator('radius', 'distance_between', mode='before')
-    @classmethod
-    def coerce_to_bool(cls, v):
-        if isinstance(v, bool):
-            return v
-        if v is None:
-            return False
-        if isinstance(v, list):
-            v = v[0] if v else False
-        if isinstance(v, str):
-            return v.lower() in ('true', '1', 'yes', 'ja')
-        return bool(v)
 
 
 class AgentState(TypedDict):
@@ -233,7 +186,7 @@ class AgentState(TypedDict):
     spatial_entities: str
     distance_constraint: Optional[float]
     radius: bool
-    hierarchy: Optional[List[List[str]]]
+    hierarchy: List[List[str]]
     target_type: str
     route: str
 
@@ -687,33 +640,20 @@ def add_relates_type(state):
 
 def build_direction_query(state):
     direction = state.get("cardinal_direction")
-    source = get_source_type(state)
     name = get_source_name(state)
+    source = get_source_type(state)
 
-    rel_filter = ""
-    if direction:
-        rel_filter = f"{{Spatial_relation: '{direction}'}}"
-
-    query = f"""
-    MATCH 
-    (start:{source} {{Name: '{name}'}})
-    -[:hasFootprint]->(g1:Geometry)
-    -[r:relates {rel_filter}]->(g2:Geometry)
-    <-[:hasFootprint]-(other:{source})
-
-    WITH start, collect(DISTINCT {{
-        id: other.ID,
-        name: other.Name
-    }}) AS target
-
-    RETURN {{
-        start: {{
-            id: start.ID,
-            name: start.Name
-        }},
-        target: target
-    }} AS result
+    # First get the ID of the source entity
+    get_id_query = f"""
+    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
     """
+    records = graph.query(get_id_query)
+    if not records or len(records) == 0:
+        return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+    
+    # Now calculate the cardinal direction query using the retrieved ID
+    query = srf.calculate_cardinal_direction(records[0]["ID"], name, state["target_type"], direction)
+
     return {**state, "cypher_query": query}
 
 
@@ -788,9 +728,6 @@ def execute_query(state):
     # adds the distance to the result (only works with two entities)
     if state["distance_between"] == True:
         cleaned = srf.calculate_distances(cleaned)
-
-    if state.get("cardinal_direction"):
-        cleaned = srf.calculate_cardinal_direction(cleaned, state["cardinal_direction"])
 
     return {**state, "result": cleaned}
 
@@ -939,7 +876,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which Cities lie in the administrative District of Unna?"
+    example_question = "Which cities lie in the district of Borken?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")

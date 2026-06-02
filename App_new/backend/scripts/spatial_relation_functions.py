@@ -15,7 +15,7 @@ import json
 def get_geometries(ids):
 
     # loading dataframe
-    csv_path = Path("App_new/backend/data/geometries.csv")
+    csv_path = Path(__file__).parent.parent / "data" / "geometries.csv"
     df = pd.read_csv(csv_path)
 
     geometries = []
@@ -116,36 +116,71 @@ def get_cardinal_direction(pointA, pointB):
         return "northern"
 
 # calculate_cardinal_direction
-def calculate_cardinal_direction(neo_result, direction):
+# input: ID of the start entity, 
+#        name of the start entity, 
+#        type of the target entity (e.g. "City"),
+#        the cardinal direction
+# output: a Cypher query which is executed in the agent
+def calculate_cardinal_direction(start_id, start_name, target_type, direction):
 
-    # get type from the id
-    start_type = neo_result[0]["start"]["id"][0]
-    # geojson -> gdf
-    start_gdf = get_geometries([neo_result[0]["start"]["id"]])
-    start_gdf = start_gdf.to_crs(epsg=25832)
-    start_centroid = start_gdf.geometry.centroid.iloc[0]
+    # get type from the id by reading the first letter
+    start_type = start_id[0]
 
     # get all entites of start_type from the geometries.csv
-    csv_path = Path("App_new\\backend\data\geometries.csv")
-
+    csv_path = Path(__file__).parent.parent / "data" / "geometries.csv"
     df = pd.read_csv(csv_path)
-    df = df[df["ID"].str.startswith(start_type)]
 
-    for index, row in df.iterrows():
-        geometry_str = row["Geometry"]
-        geometry = shape(json.loads(geometry_str))
-        geometry = geometry.to_crs(epsg=25832)
-        centroid = geometry.centroid
+    # Create index of df
+    df.set_index("ID", inplace=True)
+    df = df.loc[df.index.str.startswith(start_type)]
 
+    # df -> shapley geometry
+    start_df = df.loc[start_id]
+    start_geom = shape(json.loads(start_df["Geometry"]))
+
+    # Get start centroid
+    start_centroid = start_geom.centroid
+
+    # GeoJSON -> shapely geometry
+    df["Geometry"] = df["Geometry"].apply(
+        lambda x: shape(json.loads(x))
+    )
+
+    # DataFrame -> GeoDataFrame
+    gdf = gpd.GeoDataFrame(df, geometry="Geometry", crs="EPSG:4326")
+
+    # Calculate the cardinal direction for each entity and filter only the specified ones
+    ids_in_direction = []
+    for _, row in gdf.iterrows():
+        centroid = row["Geometry"].centroid
+        # returns a string which holds the cardinal direction
         cardinal_direction = get_cardinal_direction((start_centroid.x, start_centroid.y), (centroid.x, centroid.y))
 
-        neo_result[0]["target"] = []
         if cardinal_direction == direction:
-            neo_result[0]["target"].append({"name": row["Name"], "id": row["ID"]})
-# Überlegen: entweder csv so erweitern, dass dort auch die namen gespeichert werden
-# das führt dazu, dass evtl der alte code dahingehend nochmal geändert werden muss, dass man jetzt doch die Städtenamen hat
-# oder hier nochmal eine cypher query machen, um die namen zu bekommen
-
-
+            # row.name is the id because we set the index to ID
+            ids_in_direction.append(row.name)
     
-    return neo_result
+    # No entities in the specified direction
+    if not ids_in_direction:
+        return "RETURN null AS result LIMIT 0"
+
+    # Generate a Cypher query to get the names of the IDs in the specified direction
+    query = f"""
+        MATCH (other:{target_type})
+        WHERE other.ID IN {ids_in_direction}
+
+        WITH collect(DISTINCT {{
+            id: other.ID,
+            name: other.Name
+        }}) AS target
+
+        RETURN {{
+            start: {{
+                id: "{start_id}",
+                name: "{start_name}"
+            }},
+            target: target
+        }} AS result
+        """
+    
+    return query
