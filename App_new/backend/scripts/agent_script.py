@@ -119,6 +119,9 @@ hierarchy_assignment_description = """
 spatial_entities_description = """
      REQUIRED: Always return a list of entity names mentioned in the question.
      - A entity name is a proper name of a place in Germany
+     - It can be written in another language
+     - If the name is in a differnent language than German, translate the name to German
+        - (f.e. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
      - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState")
      of an entity into the list
 """
@@ -794,10 +797,12 @@ def execute_query(state):
 # answer
 def verbalize(state):
     prompt = f"""
-Turn the result into natural english based on the context of the question.
+Turn the result into natural language based on the context of the question.
 
 Question: {state['question']}
 Result: {state['result']}
+
+Answer in this Language: {state['language']}
 
 Rules:
 - If the result is a number, it is a Distance in m. Round it to km
@@ -934,7 +939,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What lies eastern from Bocholt?"
+    example_question = "Which Cities lie in the administrative District of Unna?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")
