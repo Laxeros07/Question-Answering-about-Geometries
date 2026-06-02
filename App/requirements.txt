@@ -1,4 +1,0 @@
-langchain 
-langchain-openai 
-langchain-community 
-neo4j
