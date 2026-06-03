@@ -875,7 +875,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What is the distance between Bonn and Cologne?"
+    example_question = "In which administrative district lies Siegburg?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")
