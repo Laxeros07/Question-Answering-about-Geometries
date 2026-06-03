@@ -16,8 +16,9 @@ export default function Navbar() {
         </Link>
 
         <Link className="navbar-brand" to="/">
-          Chat with Germany
+          QuA-GG
         </Link>
+        <small className="text-white align-text-center">Question Answering about Germanies Geometries</small>
 
         <button
           className="navbar-toggler"
