@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
-    <footer className="bg-dark text-center text-white-50 text-lg-start mt-5">
-      <div className="container ms-2 me-2 px-2 mt-2">
-        <div className="row">
-          <div className="col-2 text-start">
+    <footer className="bg-dark text-center text-white-50 text-lg-start mt-5 footer">
+      <div className="container ms-2 me-2 px-2 mt-2 py-4 d-flex flex-column justify-content-center">
+        <div className="row align-items-center">
+          <div className="col-md-3 text-start">
             <h5 className="text-uppercase">Links</h5>
             <ul className="list-unstyled mb-0">
               <li>
@@ -16,46 +16,53 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="col-3"></div>
-          <div className="col-2"></div>
-
-          <div className="col-3 text-end">
-            <div>
+          <div className="col-md-6 text-center">
+            <small>
+              This work was funded by the German Research Foundation (DFG project
+              no. 460036893 –{" "}
               <a
-                className="me-4 text-reset"
-                href="https://github.com/Felioxx/SIS-Course"
+                href="https://www.nfdi4earth.de/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary text-decoration-none"
               >
+                NFDI4Earth
+              </a>
+              ).
+            </small>
+          </div>
+
+          <div className="col-md-3 d-flex align-items-center justify-content-between">
+  
+            <a
+              href="https://www.nfdi4earth.de/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src="/images/NFDI4Earth_logo.png"
+                alt="NFDI4Earth"
+                style={{ maxHeight: "35px" }}
+              />
+            </a>
+
+            <div className="d-flex align-items-center gap-3">
+              <a className="text-reset" href="https://github.com/Laxeros07/Question-Answering-about-Geometries">
                 <i className="bi bi-github" />
               </a>
 
               <a
-                className="me-4 text-reset"
+                className="text-reset"
                 href="mailto:Apollo13.spacey@gmx.de?subject=Erreicht%20ueber%20Website&body=Sehr%20geehrtes%20Spacey%20Team,%0A%0A"
               >
                 <i className="bi bi-envelope-at-fill"></i>
               </a>
 
-              <a className="me-4 text-reset" href="tel:+4915901600951">
+              <a className="text-reset" href="tel:+4915901600951">
                 <i className="bi bi-phone"></i>
               </a>
             </div>
           </div>
-        </div>
-
-        <div className="row">
-          <div className="col-md-2"></div>
-
-          <div className="col-md-8 text-center">
-            <img
-              className="logo sm m-2"
-              src="/images/flavicon_ring.png"
-              width="50"
-              height="50"
-              alt=""
-            />
-          </div>
-
-          <div className="col-md-2"></div>
         </div>
       </div>
 
@@ -63,15 +70,7 @@ export default function Footer() {
         className="text-center p-1 text-white"
         style={{ backgroundColor: "#009036" }}
       >
-        © 2024 by: <i className="text-white">Shadowfax</i>
-        <img
-          className="img-fluid rounded me-1 d-inline-block align-text-top"
-          src="/images/shadowfax.jpg"
-          width="30"
-          height="30"
-          alt=""
-        />
+        © 2026 by: <i className="text-white">Shadowfax</i>
       </div>
     </footer>
-  );
-}
+  )}

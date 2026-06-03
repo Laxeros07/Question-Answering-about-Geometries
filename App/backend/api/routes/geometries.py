@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
-import json
+from shapely import wkt
 
 router = APIRouter(prefix="/api/geometries")
 
@@ -28,9 +28,11 @@ def get_geometries(ids: str = Query(None)):
     # Return the geometries for the requested IDs
     for geom_id in id_list:
         if geom_id in df.index:
+            geom = wkt.loads(df.loc[geom_id]["Geometry"])
+
             result.append({
                 "id": geom_id,
-                "geojson": json.loads(df.loc[geom_id]["Geometry"])
+                "geojson": geom.__geo_interface__
             })
 
     return {"geometries": result}

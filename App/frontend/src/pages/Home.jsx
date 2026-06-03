@@ -9,14 +9,14 @@ export default function Home() {
       <div className="row gy-4 gx-lg-5 align-items-center mt-5">
         <div className="col-lg-4">
           <img
-            className="img-fluid rounded mb-4 mb-lg-0"
-            src="/images/map_nrw.jpg"
+            className="img-fluid rounded mb-4 mb-lg-0 hover-image png-shadow"
+            src="/images/GER.png"
             alt="NRW Map"
           />
         </div>
 
         <div className="col-lg-8">
-          <h1 className="fw-light">Chat with NRW</h1>
+          <h1 className="fw-light">QuA-GG</h1>
 
           <p>
             Chat with NRW is an application to get precise information about the

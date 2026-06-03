@@ -1,0 +1,52 @@
+.footer a {
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+/* Hover für normale Links + React Router Links */
+.footer a:hover,
+.footer .nav-link:hover {
+  color: #007bff !important;
+  transform: translateY(-2px);
+}
+
+/* Icons etwas smoother */
+.footer i {
+  transition: all 0.2s ease;
+}
+
+/* Optional: Icon Hover leicht größer */
+.footer a:hover i {
+  transform: scale(1.15);
+}
+
+/* Optional: Logo NICHT springen lassen */
+.footer a img {
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.footer a:hover img {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.footer small:hover,
+.footer link:hover {
+  color: rgba(255, 255, 255, 0.91);
+  transition: color 0.2s ease;
+}
+
+.hover-image {
+  transition: all 0.2s ease;
+}
+
+.hover-image:hover {
+  transform: translateY(-3px) scale(1.03);
+}
+
+.png-shadow {
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6));
+}

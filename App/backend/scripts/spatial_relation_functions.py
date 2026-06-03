@@ -4,6 +4,7 @@ import pandas as pd
 import math
 import csv
 from shapely.geometry import LineString, MultiPoint, MultiPolygon, Polygon, shape
+from shapely import wkt
 from pathlib import Path
 import json
 
@@ -26,8 +27,8 @@ def get_geometries(ids):
 
         geometry_str = row.iloc[0]["Geometry"]
 
-        # JSON -> dict -> shapely geometry
-        geometry = shape(json.loads(geometry_str))
+        # String -> shapely geometry
+        geometry = wkt.loads(geometry_str)
 
         geometries.append(geometry)
         id_list.append(id)
@@ -136,14 +137,14 @@ def calculate_cardinal_direction(start_id, start_name, target_type, direction):
 
     # df -> shapley geometry
     start_df = df.loc[start_id]
-    start_geom = shape(json.loads(start_df["Geometry"]))
+    start_geom = shape(wkt.loads(start_df["Geometry"]))
 
     # Get start centroid
     start_centroid = start_geom.centroid
 
-    # GeoJSON -> shapely geometry
+    # String -> shapely geometry
     df["Geometry"] = df["Geometry"].apply(
-        lambda x: shape(json.loads(x))
+        lambda x: wkt.loads(x)
     )
 
     # DataFrame -> GeoDataFrame

@@ -163,7 +163,7 @@ export default function Chat() {
                     }}
                   />
                   <p className="fst-italic fw-light mt-2">
-                    Without key, Chat with NRW won't work.
+                    Without key, QuA-GG won't work.
                   </p>
                   {isGwdgModel && (
                     <p className="small text-muted mt-2">
@@ -296,7 +296,7 @@ export default function Chat() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Say Hi to begin chat..."
+                  placeholder="In which District lies..."
                 />
                 <div className="app_button_1" onClick={sendMessage}>
                   Send

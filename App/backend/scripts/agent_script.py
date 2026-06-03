@@ -161,6 +161,7 @@ class HierarchyItem(BaseModel):
     entity_name: str
     hierarchy: Literal[
         "City",
+        "AdministrativeCommunity",
         "District",
         "AdministrativeDistrict",
         "FederalState"
@@ -206,6 +207,7 @@ class AgentState(TypedDict):
 # Hierarchy
 HIERARCHY = [
     "City",
+    "AdministrativeCommunity",
     "District",
     "AdministrativeDistrict",
     "FederalState"
@@ -520,38 +522,36 @@ def build_within_super_class(state):
     target = state["target_type"]
     name = get_source_name(state)
 
-    start = HIERARCHY.index(source)
-    end = HIERARCHY.index(target)
-
-    query = f"MATCH (start:{source} {{Name: '{name}'}})"
-    current = "start"
-
-    for i in range(start, end):
-        next_level = HIERARCHY[i + 1]
-        next_var = f"n{i}"
-
-        query += f"""
-        MATCH ({current})
-        -[:hasFootprint]->(:Geometry)
-        -[:within]->(:Geometry)
-        <-[:hasFootprint]-({next_var}:{next_level})
+    query = f"""
+        MATCH p = (start:{source} {{Name: '{name}'}})
+        -[]->
+        (:Geometry)
+        -[:within*]->
+        (g:Geometry)    
+        <-[:hasFootprint]-
+        ({target})
         """
-        current = next_var
 
     query += f"""
-    WITH start, collect(DISTINCT {{
-        id: {current}.ID,
-        name: {current}.Name
-    }}) AS target
+        WITH start, nodes(p) AS ns
 
-    RETURN {{
-        start: {{
-            id: start.ID,
-            name: start.Name
-        }},
-        target: target
-    }} AS result
-    """
+        UNWIND ns AS n
+        MATCH (obj)-[:hasFootprint]->(n)
+        WHERE NOT obj:Geometry
+
+        WITH start, collect(DISTINCT {{
+            id: obj.ID,
+            name: obj.Name
+        }}) AS targets
+
+        RETURN {{
+            start: {{
+                id: start.ID,
+                name: start.Name
+            }},
+            target: targets
+        }} AS result
+        """
     return {**state, "cypher_query": query}
 
 def build_within_sub_class(state):
@@ -559,38 +559,31 @@ def build_within_sub_class(state):
     target = state["target_type"]
     name = get_source_name(state)
 
-    start = HIERARCHY.index(source)
-    end = HIERARCHY.index(target)
 
-    query = f"MATCH (start:{source} {{Name: '{name}'}})"
-    current = "start"
+    query = f"""
+        MATCH (start:{source} {{Name: '{name}'}})
+        -[:hasFootprint]->
+        (sourceGeom:Geometry)
 
-    for i in range(start, end, -1):
-        lower = HIERARCHY[i - 1]
-        next_var = f"n{i}"
+        MATCH (target:{target})
+        -[:hasFootprint]->
+        (targetGeom:Geometry)
 
-        query += f"""
-        MATCH ({current})
-        -[:hasFootprint]->(:Geometry)
-        <-[:within]-(:Geometry)
-        <-[:hasFootprint]-({next_var}:{lower})
+        MATCH (targetGeom)-[:within*]->(sourceGeom)
+
+        WITH start, collect(DISTINCT {{
+            id: target.ID,
+            name: target.Name
+        }}) AS targets
+
+        RETURN {{
+            start: {{
+                id: start.ID,
+                name: start.Name
+            }},
+            target: targets
+        }} AS result
         """
-        current = next_var
-
-    query += f"""
-    WITH start, collect(DISTINCT {{
-        id: {current}.ID,
-        name: {current}.Name
-    }}) AS target
-
-    RETURN {{
-        start: {{
-            id: start.ID,
-            name: start.Name
-        }},
-        target: target
-    }} AS result
-    """
     return {**state, "cypher_query": query}
 
 # touches
