@@ -26,6 +26,8 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 load_dotenv()  # Loads env variables from .env file
 
+from typing import Literal
+
 try:
     from . import spatial_relation_functions as srf
 except (ImportError, SystemError):
@@ -97,11 +99,6 @@ hierarchy_assignment_description = """
     - AdministrativeDistrict
     - FederalState
 
-    Output format:
-    [[entity_name, hierarchy], [...]]
-    Example:
-    [["Münster", "City"], ["Borken", "District"]], [["Nordrhein-Westfalen", "FederalState"]]]
-
     Rules:
     - Return one item for every entity in the question.
     - Explicit type in question overrides defaults.
@@ -160,6 +157,15 @@ target_type_description = """
     - The target type is what is asked for in the question
 """
 
+class HierarchyItem(BaseModel):
+    entity_name: str
+    hierarchy: Literal[
+        "City",
+        "District",
+        "AdministrativeDistrict",
+        "FederalState"
+    ]
+
 class ParameterExtraction(BaseModel):
     language: str = Field(description="language of the input question")
     spatial_relationship: str = Field(description=relationship_description)
@@ -168,7 +174,10 @@ class ParameterExtraction(BaseModel):
     distance_constraint: Optional[float] = Field(default=None, description=distance_constraint_description)
     radius: Optional[bool] = Field(default=False, description=radius_description)
     distance_between: bool = Field(description=distance_between_description)
-    hierarchy: List[List[str]] = Field(default=None, description=hierarchy_assignment_description)
+    hierarchy: List[HierarchyItem] = Field(
+        default_factory=list,
+        description=hierarchy_assignment_description
+    )
     target_type: str = Field(description=target_type_description)
 
 
@@ -186,7 +195,7 @@ class AgentState(TypedDict):
     spatial_entities: str
     distance_constraint: Optional[float]
     radius: bool
-    hierarchy: List[List[str]]
+    hierarchy: List[HierarchyItem]
     target_type: str
     route: str
 
@@ -452,26 +461,27 @@ def select_query_type(state):
 def get_source_type(state, fallback="City"):
     """Secure access to the source type from the hierarchy."""
     hierarchy = state.get("hierarchy", [])
-    if not hierarchy or not hierarchy[0]:
+
+    if not hierarchy:
         return fallback
+
     first = hierarchy[0]
-    # Expected: [name, type] – use index 1 or fallback
-    if isinstance(first, list) and len(first) >= 2:
-        type_str = first[1]
-        return type_str if type_str in HIERARCHY else fallback
-    return fallback
+
+    return (
+        first.hierarchy
+        if first.hierarchy in HIERARCHY
+        else fallback
+    )
 
 def get_source_name(state, fallback=""):
     """Reliable access to the source name from the hierarchy."""
     hierarchy = state.get("hierarchy", [])
-    if not hierarchy or not hierarchy[0]:
-        # Fallback from spatial_entities
+
+    if not hierarchy:
         entities = state.get("spatial_entities", [])
         return entities[0] if entities else fallback
-    first = hierarchy[0]
-    if isinstance(first, list) and len(first) >= 1:
-        return first[0]
-    return fallback
+
+    return hierarchy[0].entity_name
 
 
 def build_location_query(state):
@@ -697,25 +707,21 @@ def build_distance_between_query(state):
     e1 = entities[0]
     e2 = entities[1]
 
+    # Get the IDs of the source entity. The distance is then calculated later
     query = f"""
-    MATCH 
-    (a:{source} {{Name: '{e1}'}})
-    -[:hasFootprint]->(g1:Geometry)
-    -[r:relates]->(g2:Geometry)
-    <-[:hasFootprint]-(b:{source} {{Name: '{e2}'}})
-
-    WITH a,r, collect(DISTINCT {{
-        id: b.ID,
-        name: b.Name
-    }}) AS target
-
-    RETURN {{
-        start: {{
-            id: a.ID,
-            name: a.Name
-        }},
-        target: target
-    }} AS result
+        MATCH 
+            (n1:{source} {{Name: '{e1}'}}), 
+            (n2:{source} {{Name: '{e2}'}})
+        RETURN {{
+            start: {{
+                id: n1.ID,
+                name: n1.Name
+            }},
+            target: [{{
+                id: n2.ID,
+                name: n2.Name
+            }}]
+        }} AS result
     """
     return {**state, "cypher_query": query}
 
@@ -876,7 +882,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie in the district of Borken?"
+    example_question = "What is the distance between Bonn and Cologne?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")
