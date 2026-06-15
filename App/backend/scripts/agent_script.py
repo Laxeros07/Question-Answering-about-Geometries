@@ -619,12 +619,6 @@ def select_relates_type(state):
     if state.get("cardinal_direction"):
         return "direction"
 
-    # Fallback when the model returned a distance constraint
-    # but did not explicitly set radius=True.
-    if state.get("distance_constraint", 0) > 0:
-        print("Radius was manually set to True based on distance_constraint")
-        return "radius"
-
     return "direction"
 
 def add_relates_type(state):
@@ -868,7 +862,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "In which administrative district lies Siegburg?"
+    example_question = "What is the distance between Siegburg and Hameln?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")
