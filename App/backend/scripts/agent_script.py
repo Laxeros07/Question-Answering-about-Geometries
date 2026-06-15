@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from typing import TypedDict, Literal, Optional, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
 from langchain_community.graphs import Neo4jGraph
 from langchain_neo4j import Neo4jGraph
 
@@ -57,11 +58,12 @@ instructions = """Analyze the input query and extract the following parameters.
 <relationship>
   <task>extract the type of relationship mentioned in the query</task>
   <constraints>
-    - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
-    - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
-    - "touches": geographic neighbors (lies next to, is next to, touches)
-    - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
-    - "None": if none of the above apply
+    - The relationship can only be one of the following:
+      - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
+      - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
+      - "touches": geographic neighbors (lies next to, is next to, touches)
+      - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
+      - "None": if none of the above apply
   </constraints>
 </relationship>
 
@@ -391,7 +393,9 @@ def interpret_query(state):
             schema=ParameterExtraction,
             method="function_calling"
         )
-        response = structured_llm.invoke(question)
+        prompt_template = PromptTemplate.from_template(instructions)
+        chain = prompt_template | structured_llm
+        response = chain.invoke(question)
     else:
         # SAIA: manual Prompting (avoids tool-calling issues)
         print(f"Using manual prompting for SAIA model {model_name}")
