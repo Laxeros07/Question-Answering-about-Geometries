@@ -20,10 +20,12 @@ export default function Map({ mapInstanceRef }) {
     const fsLayer = L.featureGroup().addTo(map);
     const adLayer = L.featureGroup().addTo(map);
     const districtLayer = L.featureGroup().addTo(map);
+    const acLayer = L.featureGroup().addTo(map);
     const cityLayer = L.featureGroup().addTo(map);
 
     mapInstanceRef.current.layers = {
       cityLayer,
+      acLayer,
       districtLayer,
       adLayer,
       fsLayer,
@@ -43,6 +45,7 @@ export default function Map({ mapInstanceRef }) {
     const baseMaps = { OpenStreetMap: osm };
     const overlayMaps = {
       Cities: cityLayer,
+      "Administrative Communities": acLayer,
       Districts: districtLayer,
       "Administrative Districts": adLayer,
       "Federal States": fsLayer,
@@ -60,8 +63,11 @@ export default function Map({ mapInstanceRef }) {
     map.createPane("D");
     map.getPane("D").style.zIndex = 420;
 
+    map.createPane("V");
+    map.getPane("V").style.zIndex = 430;
+
     map.createPane("C");
-    map.getPane("C").style.zIndex = 430;
+    map.getPane("C").style.zIndex = 440;
 
     // Legend
     const legend = L.control({ position: "bottomleft" });
@@ -71,6 +77,7 @@ export default function Map({ mapInstanceRef }) {
 
       const categories = [
         "City",
+        "Administrative community",
         "District",
         "Administrative district",
         "Federal state",
