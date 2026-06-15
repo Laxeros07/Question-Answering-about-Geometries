@@ -849,6 +849,11 @@ def fancy_print(result):
     ))
 
     console.print("[bold yellow]FULL OUTPUT[/bold yellow]")
+    # Format hierarchy to put it in a JSON
+    i = 0
+    for item in result["hierarchy"]:
+        result["hierarchy"][i] = item.model_dump()
+        i += 1
     console.print(JSON.from_data(result))
 
     console.print("\n" + "═"*80 + "\n")
