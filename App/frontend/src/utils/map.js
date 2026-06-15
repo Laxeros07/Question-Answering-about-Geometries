@@ -7,13 +7,15 @@ import { API_BASE_URL } from "./constants";
 export function getColor(d) {
   return d === "City" || d === "C"
     ? "#3A27D0"
-    : d === "District" || d === "D"
-      ? "#f04b23"
-      : d === "Administrative district" || d === "A"
-        ? "#ffcc00"
-        : d === "Federal state" || d === "F"
-          ? "#469F4E"
-          : "#ff7f00";
+    : d === "Administrative community" || d === "V"
+      ? "#00aeff"
+      : d === "District" || d === "D"
+        ? "#f04b23"
+        : d === "Administrative district" || d === "A"
+          ? "#ffcc00"
+          : d === "Federal state" || d === "F"
+            ? "#469F4E"
+            : "#fff";
 }
 
 // Mapping ID prefixes to readable level names
@@ -21,6 +23,8 @@ export function getLevelName(typeCode) {
   switch (typeCode) {
     case "C":
       return "City";
+    case "V":
+      return "AdministrativeCommunity";
     case "D":
       return "District";
     case "A":
@@ -36,7 +40,7 @@ export function getLevelName(typeCode) {
  * Loads the geometries for the given search IDs and adds them to the map.
  */
 export async function loadGeometries(searchIDs, map) {
-  const { cityLayer, districtLayer, adLayer, fsLayer } = map.layers;
+  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer } = map.layers;
   const data = await fetchGeometries(searchIDs);
 
   data.forEach((item) => {
@@ -76,6 +80,9 @@ export async function loadGeometries(searchIDs, map) {
       case "C":
         cityLayer.addLayer(layer);
         break;
+      case "V":
+        acLayer.addLayer(layer);
+        break;
       case "D":
         districtLayer.addLayer(layer);
         break;
@@ -90,7 +97,13 @@ export async function loadGeometries(searchIDs, map) {
     }
   });
 
-  const group = L.featureGroup([cityLayer, districtLayer, adLayer, fsLayer]);
+  const group = L.featureGroup([
+    cityLayer,
+    acLayer,
+    districtLayer,
+    adLayer,
+    fsLayer,
+  ]);
   map.flyToBounds(group.getBounds());
 }
 
@@ -100,8 +113,10 @@ export async function loadGeometries(searchIDs, map) {
 export function clearGeometries(mapRef) {
   if (!mapRef.current?.layers) return;
 
-  const { cityLayer, districtLayer, adLayer, fsLayer } = mapRef.current.layers;
+  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer } =
+    mapRef.current.layers;
   cityLayer.clearLayers();
+  acLayer.clearLayers();
   districtLayer.clearLayers();
   adLayer.clearLayers();
   fsLayer.clearLayers();
