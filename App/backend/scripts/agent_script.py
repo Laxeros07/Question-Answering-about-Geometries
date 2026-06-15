@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from typing import TypedDict, Literal, Optional, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
 from langchain_community.graphs import Neo4jGraph
 from langchain_neo4j import Neo4jGraph
 
@@ -48,19 +49,27 @@ def init_db():
 
 init_db()
 
-# Pydantic and llm_with_structured_output
+instructions = """Analyze the input query and extract the following parameters.
 
-relationship_description = """
-Classify the question into one of these spatial_relationships:
-    - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
-    - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
-    - "touches": geographic neighbors (lies next to, is next to, touches)
-    - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
-    - "None": if none of the above apply
-"""
+<language>
+  <task>extract the language of the query</task>
+</language>
 
-cardinal_direction_description = """
-Extract one of the following relationships if mentioned ("northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern)
+<relationship>
+  <task>extract the type of relationship mentioned in the query</task>
+  <constraints>
+    - The relationship can only be one of the following:
+      - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
+      - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
+      - "touches": geographic neighbors (lies next to, is next to, touches)
+      - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
+      - "None": if none of the above apply
+  </constraints>
+</relationship>
+
+<cardinal_direction>
+<task>extract one of the following relationships if mentioned ("northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern)</task>
+  <constraints>
     - "north", "northern" → ALWAYS cardinal_direction = "northern"
     - "south", "southern" → ALWAYS cardinal_direction = "southern"
     - "east", "eastern" → ALWAYS cardinal_direction = "eastern"
@@ -69,92 +78,78 @@ Extract one of the following relationships if mentioned ("northern | southern | 
     - "northwest", "northwestern" → ALWAYS cardinal_direction = "northwestern"
     - "southeast", "southeastern" → ALWAYS cardinal_direction = "southeastern"
     - "southwest", "southwestern" → ALWAYS cardinal_direction = "southwestern"
-"""
+  </constraints>
+</cardinal_direction>
 
-distance_constraint_description = """
-    - Return a float value representing the distance constraint
+<distance_constraint>
+  <task>Return a float value representing the distance constraint. ONLY if a distance constraint is mentioned in the query. </task>
+  <constraints>
     - Convert all numbers to numeric values (no strings)
     - Calculate the distance constraint in meters (m)
     - Normalize units:
         - "km", "kilometer" → km
         - "m", "meter" → m
-"""
+   </constraints>
+</distance_constraint>
 
-distance_between_description = """
-    - TRUE only if TWO entities are explicitly compared
-    - keywords: "between", "distance from X to Y", "What is the distance.."
-"""
+<distance_between>
+  <task>return TRUE only if TWO entities are explicitly compared</task>
+  <constraints>
+    - relevant keywords for TRUE: "between", "distance from X to Y", "What is the distance.."
+  </constraints>
+</distance_between>
 
-radius_description = """
-    - TRUE only if the question explicitly states a radius or distance constraint without comparing two entities
-    - Keywords: "within a radius of X km/m", "in a radius of X km/m", "within X km/m distance", "in X km/m distance", "X km/m from", "X km/m around", "X km/m near", "X km/m close to"
-"""
+<radius>
+  <task>return TRUE only if the question explicitly states a radius or distance constraint without comparing two entities</task>
+  <constraints>
+    - relevant keywords for TRUE: "within a radius of X km/m", "in a radius of X km/m", "within X km/m distance", "in X km/m distance", "X km/m from", "X km/m around", "X km/m near", "X km/m close to"
+  </constraints>
+</radius>
 
-hierarchy_assignment_description = """
-    Assign every spatial entity a hierarchy type.
-
-    Allowed hierarchy values:
-    - City
-    - District
-    - AdministrativeDistrict
-    - FederalState
-
-    Rules:
+<hierarchy>
+<task>assign the entities to one of the following hierarchies:</task>
+  <constraints>
+    - allowed hierarchy values:
+        - "City",
+        - "AdministrativeCommunity",
+        - "District",
+        - "AdministrativeDistrict",
+        - "FederalState"
     - Return one item for every entity in the question.
     - Explicit type in question overrides defaults.
     - Default hierarchy is City.
     - German keywords:
-        Stadt -> City
-        Kreis -> District
-        Regierungsbezirk -> AdministrativeDistrict
-        Bundesland -> FederalState
-"""
+        - Stadt -> City
+        - Verwaltungsgemeinschaft -> AdministrativeCommunity
+        - Kreis -> District
+        - Regierungsbezirk -> AdministrativeDistrict
+        - Bundesland -> FederalState
+  </constraints>
+</hierarchy>
 
-# hierarchy_assignment_description = """
-#     - Assign the entities of the question to one of the following hierarchies:
-#     City < District < AdministrativeDistrict < FederalState
+<spatial_entities>
+  <task>Return a list of entity names mentioned in the question.</task>
+  <constraints>
+    - A entity name is a proper name of a place in Germany
+    - It can be written in another language
+    - If the name is in a different language than German, translate the name to German
+      - (f.e. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+    - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
+  </constraints>
+</spatial_entities>
 
-#     - Always return the answer as a NON EMPTY list of lists of the format [[entity_name, hierarchy],[...]]
-
-#     Rules:
-#     - If a Type ("City | AdministrativeDistrict | District | FederalState") is stated in the question like in the following examples:
-#         - If "administrative District of" or "the administrative District ..." is in the question → [entity_name, "AdministrativeDistrict"]
-#         - If "District of" or "the District ..." is in the question → [entity_name, "District"]
-#         - If "federal State of" or "the federal State ..." is in the question → [entity_name, "FederalState"]
-
-#         - If asking "Which Cities lie within ..." → [entity_name, "District"] or [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
-#         - If asking "Which Districts lie within ..." → [entity_name, "AdministrativeDistrict"] or [entity_name, "FederalState"]
-#         - If asking "Which administrative Districts lie within ..." → [entity_name, "FederalState"]
-
-#         - If asking "Which Cities lie next to (border) ..." → [entity_name, "City"]
-#         - If asking "Which administrative Districts lie next to (border) ..." → [entity_name, "AdministrativeDistrict"]
-#         - If asking "Which Districts lie next to (border) ..." → [entity_name, "District"]
-#         - If asking "Which federal States lie next to (border) ..." → [entity_name, "FederalState"]
-#     - If no type is stated assign the type "City" or, if the following german words are in the name, use them:
-#         - If "Stadt" in the name → "City"
-#         - If "Kreis" in the name → "District"
-#         - If "Regierungsbezirk" in the name → "AdministrativeDistrict"
-#         - If "Bundesland" in the name → "FederalState"
-# """
-
-spatial_entities_description = """
-     REQUIRED: Always return a list of entity names mentioned in the question.
-     - A entity name is a proper name of a place in Germany
-     - It can be written in another language
-     - If the name is in a differnent language than German, translate the name to German
-        - (f.e. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
-     - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState")
-     of an entity into the list
-"""
-
-target_type_description = """
-    assign the target entity type in a geographic query to one of the following hierarchy:
-    City < District < AdministrativeDistrict < FederalState
-
-    - Return the answer as a list of strings
-
-    Rules:
+<target_type>
+  <task>Return the type of the target entity in the question.</task>
+  <constraints>
+    - Return one of the following types: 
+        City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState
+    - Return the answer as a list of strings (there can be multiple target types in one question, e.g. "Which Cities and Districts lie within North Rhine-Westphalia?" → ["City", "District"])
     - The target type is what is asked for in the question
+  </constraints>
+</target_type>
+
+Query: {query}
+
 """
 
 class HierarchyItem(BaseModel):
@@ -169,18 +164,14 @@ class HierarchyItem(BaseModel):
 
 class ParameterExtraction(BaseModel):
     language: str = Field(description="language of the input question")
-    spatial_relationship: str = Field(description=relationship_description)
-    cardinal_direction: Optional[str] = Field(default=None, description=cardinal_direction_description)
-    spatial_entities: List[str] = Field(description=spatial_entities_description)  # NEVER empty!
-    distance_constraint: Optional[float] = Field(default=None, description=distance_constraint_description)
-    radius: Optional[bool] = Field(default=False, description=radius_description)
-    distance_between: bool = Field(description=distance_between_description)
-    hierarchy: List[HierarchyItem] = Field(
-        default_factory=list,
-        description=hierarchy_assignment_description
-    )
-    target_type: str = Field(description=target_type_description)
-
+    spatial_relationship: str = Field(description="type of relationship of interest in the question")
+    cardinal_direction: str = Field(description="cardinal relationships in the input question")
+    spatial_entities: List[str]  = Field(description="list of spatial entities in the input question")
+    distance_constraint: str  = Field(description="distance constraints mentioned in the input question")
+    radius: Optional[bool] = Field(default=False, description="whether or not the question implies a radius constraint")
+    distance_between: str = Field(description="whether or not two entities are explicitly compared")
+    hierarchy: List[HierarchyItem] = Field(default_factory=list, description="hierarchy assignment for the entities mentioned in the question")
+    target_type: str = Field(description="the type of the target entity that is asked for in the question")
 
 class AgentState(TypedDict):
     # INPUT
@@ -402,7 +393,9 @@ def interpret_query(state):
             schema=ParameterExtraction,
             method="function_calling"
         )
-        response = structured_llm.invoke(question)
+        prompt_template = PromptTemplate.from_template(instructions)
+        chain = prompt_template | structured_llm
+        response = chain.invoke(question)
     else:
         # SAIA: manual Prompting (avoids tool-calling issues)
         print(f"Using manual prompting for SAIA model {model_name}")
