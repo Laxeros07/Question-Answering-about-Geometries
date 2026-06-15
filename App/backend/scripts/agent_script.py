@@ -165,11 +165,11 @@ class HierarchyItem(BaseModel):
 class ParameterExtraction(BaseModel):
     language: str = Field(description="language of the input question")
     spatial_relationship: str = Field(description="type of relationship of interest in the question")
-    cardinal_direction: str = Field(description="cardinal relationships in the input question")
+    cardinal_direction: Optional[str] = Field(description="cardinal relationships in the input question")
     spatial_entities: List[str]  = Field(description="list of spatial entities in the input question")
-    distance_constraint: str  = Field(description="distance constraints mentioned in the input question")
+    distance_constraint: Optional[float]  = Field(description="distance constraints mentioned in the input question")
     radius: Optional[bool] = Field(default=False, description="whether or not the question implies a radius constraint")
-    distance_between: str = Field(description="whether or not two entities are explicitly compared")
+    distance_between: bool = Field(description="whether or not two entities are explicitly compared")
     hierarchy: List[HierarchyItem] = Field(default_factory=list, description="hierarchy assignment for the entities mentioned in the question")
     target_type: str = Field(description="the type of the target entity that is asked for in the question")
 
