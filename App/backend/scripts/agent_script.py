@@ -20,6 +20,9 @@ import json
 import re
 
 import os
+import threading
+import time
+import logging
 
 from typing import List
 from pydantic import BaseModel, Field
@@ -40,13 +43,40 @@ graph = None
 
 # function only executed once when starting the app
 def init_db():
-    global graph
-    graph = Neo4jGraph(
-        url="neo4j://localhost:7687",
-        username="neo4j",
-        password="chatwithgermany"
-    )
+    """Start a background thread that keeps trying to connect to Neo4j.
 
+    This avoids crashing the whole backend when Neo4j is not yet available.
+    The thread runs as a daemon and will set the module-level `graph` once
+    a connection succeeds.
+    """
+    def _connect_loop(retry_interval: int = 10):
+        global graph
+        logger = logging.getLogger("agent_script.neo4j")
+        while True:
+            try:
+                g = Neo4jGraph(
+                    url="neo4j://localhost:7687",
+                    username="neo4j",
+                    password="chatwithgermany"
+                )
+                # quick smoke-test query
+                try:
+                    g.query("RETURN 1")
+                except Exception:
+                    # In some versions the query method may differ; accept creation
+                    pass
+
+                graph = g
+                logger.info("Connected to Neo4j")
+                break
+            except Exception as e:
+                logger.warning(f"Could not connect to Neo4j: {e}. Retrying in {retry_interval}s")
+                time.sleep(retry_interval)
+
+    thread = threading.Thread(target=_connect_loop, daemon=True)
+    thread.start()
+
+# Start non-blocking connection attempts at import time
 init_db()
 
 instructions = """Analyze the input query and extract the following parameters.
@@ -404,8 +434,9 @@ def interpret_query(state):
     if response.spatial_relationship == "None":
         return {
             **state,
-            "result": None,
-            "route": "verbalize"
+            "result": "Not valid",
+            "route": "verbalize",
+            "language": response.language
         }
 
     return {
@@ -719,30 +750,51 @@ def execute_query(state):
 
 # answer
 def verbalize(state):
-    prompt = f"""
-Turn the result into natural language based on the context of the question.
 
-Question: {state['question']}
-Result: {state['result']}
+    if state["result"] == "Not valid":
+        prompt = f"""
+            The user provided a question that does not seem to be about the geometries of Germany. The question was: "{state['question']}"
+        """
+        if "language" in state:
+            prompt += f"""
+                Answer in this Language: {state['language']}
+            """
+        prompt += f"""
+            Answer the following:
+            Hello. This chatbot answers only questions about the geometries of Germany. Please try again with a different question.
+        """
+    else:
 
-Answer in this Language: {state['language']}
+        prompt = f"""
+        Turn the result into natural language based on the context of the question.
 
-Rules:
-- If the result is a number, it is a Distance in m. Round it to km
-- The first letter of the id states which hierarchy level the result has:
-    - C = City
-    - D = District
-    - A = Administrative District
-    - F = Federal State
-  include the level in the answer but NOT the id
+        Question: {state['question']}
+        Result: {state['result']}
 
-- If the result is empty answer:
-    "Hello. This chatbot answers only questions about the geometries of Germany. Please try again with a different question."
-- The Result is never a question
-- Put only the result in the Answer NEVER the question
-- Do not use Markdown or code formatting in the answer, just plain text
-"""
-    if state['result'] is None or (isinstance(state['result'], list) and len(state['result']) == 0):
+        Answer in this Language: {state['language']}
+        If language is german, use the following translations for the hierarchy levels:
+        - City -> Stadt
+        - AdministrativeCommunity -> Verwaltungsgemeinschaft
+        - District -> Kreis
+        - AdministrativeDistrict -> Regierungsbezirk
+        - FederalState -> Bundesland
+
+        Rules:
+        - If the result is a number, it is a Distance in m. Round it to km
+        - The first letter of the id states which hierarchy level the result has:
+            - C = City
+            - D = District
+            - A = Administrative District
+            - F = Federal State
+        include the level in the answer but NOT the id
+
+        - If the result is empty answer:
+            Answer the question with the information, that nothing no geometry found.
+        - The Result is never a question
+        - Put only the result in the Answer NEVER the question
+        - Do not use Markdown or code formatting in the answer, just plain text
+        """
+    if state['result'] is None or state['result'] == "Not valid" or (isinstance(state['result'], list) and len(state['result']) == 0):
         return {
             **state,
             "result": {
@@ -867,7 +919,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What is the distance between Siegburg and Hameln?"
+    example_question = "kasdjhaksjh"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5-nano")
