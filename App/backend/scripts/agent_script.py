@@ -751,6 +751,7 @@ def execute_query(state):
 # answer
 def verbalize(state):
 
+    # Answer when the result is not valid
     if state["result"] == "Not valid":
         prompt = f"""
             The user provided a question that does not seem to be about the geometries of Germany. The question was: "{state['question']}"
@@ -765,6 +766,7 @@ def verbalize(state):
         """
     else:
 
+        # Regular answer
         prompt = f"""
         Turn the result into natural language based on the context of the question.
 
