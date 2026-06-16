@@ -43,38 +43,12 @@ graph = None
 
 # function only executed once when starting the app
 def init_db():
-    """Start a background thread that keeps trying to connect to Neo4j.
-
-    This avoids crashing the whole backend when Neo4j is not yet available.
-    The thread runs as a daemon and will set the module-level `graph` once
-    a connection succeeds.
-    """
-    def _connect_loop(retry_interval: int = 10):
-        global graph
-        logger = logging.getLogger("agent_script.neo4j")
-        while True:
-            try:
-                g = Neo4jGraph(
-                    url="neo4j://localhost:7687",
-                    username="neo4j",
-                    password="chatwithgermany"
-                )
-                # quick smoke-test query
-                try:
-                    g.query("RETURN 1")
-                except Exception:
-                    # In some versions the query method may differ; accept creation
-                    pass
-
-                graph = g
-                logger.info("Connected to Neo4j")
-                break
-            except Exception as e:
-                logger.warning(f"Could not connect to Neo4j: {e}. Retrying in {retry_interval}s")
-                time.sleep(retry_interval)
-
-    thread = threading.Thread(target=_connect_loop, daemon=True)
-    thread.start()
+    global graph
+    graph = Neo4jGraph(
+        url="neo4j://localhost:7687",
+        username="neo4j",
+        password="chatwithgermany"
+    )
 
 # Start non-blocking connection attempts at import time
 init_db()
@@ -658,7 +632,6 @@ def add_relates_type(state):
         "relates_type": select_relates_type(state)
     }
 
-
 def build_direction_query(state):
     direction = state.get("cardinal_direction")
     name = get_source_name(state)
@@ -677,34 +650,46 @@ def build_direction_query(state):
 
     return {**state, "cypher_query": query}
 
-
 def build_radius_query(state):
     distance = state["distance_constraint"]
     source = get_source_type(state)
     name = get_source_name(state)
 
-    query = f"""
-    MATCH 
-    (start:{source} {{Name: '{name}'}})
-    -[:hasFootprint]->(g1:Geometry)
-    -[r:relates]->(g2:Geometry)
-    <-[:hasFootprint]-(other:{source})
-
-    WHERE r.Distance_between <= {distance}
-
-    WITH start, collect(DISTINCT {{
-        id: other.ID,
-        name: other.Name
-    }}) AS target
-
-    RETURN {{
-        start: {{
-            id: start.ID,
-            name: start.Name
-        }},
-        target: target
-    }} AS result
+    # First get the ID of the source entity
+    get_id_query = f"""
+    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
     """
+    records = graph.query(get_id_query)
+    if not records or len(records) == 0:
+        return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+    
+    # Now calculate the radius query using the retrieved ID
+    query = srf.calculate_radius(records[0]["ID"], name, state["target_type"], distance)
+
+    return {**state, "cypher_query": query}
+
+    # query = f"""
+    # MATCH 
+    # (start:{source} {{Name: '{name}'}})
+    # -[:hasFootprint]->(g1:Geometry)
+    # -[r:relates]->(g2:Geometry)
+    # <-[:hasFootprint]-(other:{source})
+
+    # WHERE r.Distance_between <= {distance}
+
+    # WITH start, collect(DISTINCT {{
+    #     id: other.ID,
+    #     name: other.Name
+    # }}) AS target
+
+    # RETURN {{
+    #     start: {{
+    #         id: start.ID,
+    #         name: start.Name
+    #     }},
+    #     target: target
+    # }} AS result
+    # """
     return {**state, "cypher_query": query}
 
 
@@ -921,10 +906,10 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "kasdjhaksjh"
+    example_question = "What to the north of Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
-        result = run_question(example_question, example_api_key, "gpt-5-nano")
+        result = run_question(example_question, example_api_key, "gpt-4o")
 
         fancy_print(result)
     else:
