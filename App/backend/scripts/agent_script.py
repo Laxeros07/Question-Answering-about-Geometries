@@ -138,6 +138,9 @@ instructions = """Analyze the input query and extract the following parameters.
     - It can be written in another language
     - If the name is in a different language than German, translate the name to German
       - (f.e. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+    - If there are multiple entities, put the start entity first and then the target entity:
+      - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
+        because the query must check from Münster whether Bocholt lies western of it
     - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
   </constraints>
 </spatial_entities>
@@ -149,8 +152,17 @@ instructions = """Analyze the input query and extract the following parameters.
         City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState
     - Return the answer as a list of strings (there can be multiple target types in one question, e.g. "Which Cities and Districts lie within North Rhine-Westphalia?" → ["City", "District"])
     - The target type is what is asked for in the question
+    - The default value is City, when no type is mentioned
   </constraints>
-</target_type>
+</target_type> 
+
+<decision_question>
+  <task> Determine whether the question is a decision_question. </task>
+  <constraints>
+    - Return True, when the user asks for a yes or no answer (e.g. "Does Münster lie northern of Selm?")
+    - Else return False
+  </constrains>
+</decision_question>
 
 Query: {query}
 
@@ -176,6 +188,7 @@ class ParameterExtraction(BaseModel):
     distance_between: bool = Field(description="whether or not two entities are explicitly compared")
     hierarchy: List[HierarchyItem] = Field(default_factory=list, description="hierarchy assignment for the entities mentioned in the question")
     target_type: str = Field(description="the type of the target entity that is asked for in the question")
+    decision_question: bool = Field(description="whether or not the question is a decision question")
 
 class AgentState(TypedDict):
     # INPUT
@@ -193,6 +206,7 @@ class AgentState(TypedDict):
     radius: bool
     hierarchy: List[HierarchyItem]
     target_type: str
+    decision_question: bool
     route: str
 
     # OUTPUT
@@ -283,7 +297,8 @@ Return ONLY a JSON object with EXACTLY these fields. No markdown, no code blocks
   "radius": false,
   "distance_between": false,
   "hierarchy": [["EntityName", "City"]],
-  "target_type": "District"
+  "target_type": "District",
+  "decision_question": false
 }}
 
 FIELD RULES:
@@ -303,7 +318,8 @@ FIELD RULES:
 - "hierarchy": List of [entity_name, type] pairs.
     Type is one of: "City", "District", "AdministrativeDistrict", "FederalState"
 - "target_type": What the question asks for. ONE of:
-    "City", "District", "AdministrativeDistrict", "FederalState"
+    "City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState"
+- "decision_question": Whether the question is a Yes or No question: True or False
 
 EXAMPLES:
 
@@ -347,6 +363,7 @@ Return ONLY the JSON object, nothing else:"""
         "distance_between": False,
         "hierarchy": [],
         "target_type": "City",
+        "decision_question": False
     }
     
     # If the model returns a tool call format: convert
@@ -424,6 +441,7 @@ def interpret_query(state):
         "distance_constraint": response.distance_constraint,
         "hierarchy": response.hierarchy,
         "target_type": response.target_type,
+        "decision_question": response.decision_question,
         "route": "add_inheritance"
     }
 
@@ -515,6 +533,11 @@ def build_location_query(state):
     return {**state, "cypher_query": query}
 
 # Within
+def build_within_same_class(state):
+    # within_same does not exist, but the code sometimes goes there. To prevent this error, this function returns a Null query
+    query = "RETURN null AS result LIMIT 0"
+    return {**state, "cypher_query": query}
+
 def build_within_super_class(state):
     source = get_source_type(state)
     target = state["target_type"]
@@ -732,6 +755,10 @@ def execute_query(state):
     if state["distance_between"] == True:
         cleaned = srf.calculate_distances(cleaned)
 
+    # When it is a decision question, only show the geometries mentioned in the question
+    if state["decision_question"] == True:
+        result[0]["result"]["target"] = [item for item in result[0]["result"]["target"] if item["name"] in state["spatial_entities"]]
+
     return {**state, "result": cleaned}
 
 # answer
@@ -808,6 +835,7 @@ workflow.add_node("interpret_query", interpret_query)
 workflow.add_node("add_inheritance", add_inheritance)
 
 workflow.add_node("build_location_query", build_location_query)
+workflow.add_node("build_within_same_class", build_within_same_class)
 workflow.add_node("build_within_super_class", build_within_super_class)
 workflow.add_node("build_within_sub_class", build_within_sub_class)
 workflow.add_node("build_touches_query", build_touches_query)
@@ -838,6 +866,7 @@ workflow.add_conditional_edges(
     select_query_type,
     {
         "location_action": "build_location_query",
+        "within_same_class": "build_within_same_class",
         "within_super_class": "build_within_super_class",
         "within_sub_class": "build_within_sub_class",
         "touches_action": "build_touches_query",
@@ -858,6 +887,7 @@ workflow.add_conditional_edges(
 )
 
 workflow.add_edge("build_location_query", "execute_query")
+workflow.add_edge("build_within_same_class", "execute_query")
 workflow.add_edge("build_within_super_class", "execute_query")
 workflow.add_edge("build_within_sub_class", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
@@ -910,7 +940,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What lies next to Münster on the right?"
+    example_question = "Does Bocholt lie western of Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-4o")
