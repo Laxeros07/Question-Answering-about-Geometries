@@ -65,7 +65,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - The relationship can only be one of the following:
       - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
       - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
-      - "touches": geographic neighbors (lies next to, is next to, touches)
+      - "touches": geographic neighbors (lies next to, is next to, touches, directly)
       - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
       - "None": if none of the above apply
   </constraints>
@@ -74,10 +74,10 @@ instructions = """Analyze the input query and extract the following parameters.
 <cardinal_direction>
 <task>extract one of the following relationships if mentioned ("northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern)</task>
   <constraints>
-    - "north", "northern" → ALWAYS cardinal_direction = "northern"
-    - "south", "southern" → ALWAYS cardinal_direction = "southern"
-    - "east", "eastern" → ALWAYS cardinal_direction = "eastern"
-    - "west", "western" → ALWAYS cardinal_direction = "western"
+    - "north", "northern", "over" → ALWAYS cardinal_direction = "northern"
+    - "south", "southern", "under" → ALWAYS cardinal_direction = "southern"
+    - "east", "eastern", "right" → ALWAYS cardinal_direction = "eastern"
+    - "west", "western", "left" → ALWAYS cardinal_direction = "western"
     - "northeast", "northeastern" → ALWAYS cardinal_direction = "northeastern"
     - "northwest", "northwestern" → ALWAYS cardinal_direction = "northwestern"
     - "southeast", "southeastern" → ALWAYS cardinal_direction = "southeastern"
@@ -589,13 +589,17 @@ def build_touches_query(state):
     source = get_source_type(state)
     name = get_source_name(state)
 
+    # Filter for direction if specified
+    direction = state.get("cardinal_direction")
+    direction_filter = f"{{Rel_Position: '{direction}'}}" if direction else ""
+
     return {
         **state,
         "cypher_query": f"""
         MATCH 
         (start:{source} {{Name: '{name}'}})
         -[:hasFootprint]->(:Geometry)
-        <-[:touches]-(:Geometry)
+        -[:touches {direction_filter}]->(:Geometry)
         <-[:hasFootprint]-(neighbor:{source})
 
         WITH start, collect(DISTINCT {{
@@ -617,6 +621,9 @@ def build_touches_query(state):
 def select_relates_type(state):
     if state["distance_between"] == True:
         return "distance_between"
+    
+    if state["radius"] == True or state["distance_constraint"] is not None and state.get("cardinal_direction"):
+        return "radius_and_direction"
 
     if state["radius"] == True:
         return "radius"
@@ -668,31 +675,6 @@ def build_radius_query(state):
 
     return {**state, "cypher_query": query}
 
-    # query = f"""
-    # MATCH 
-    # (start:{source} {{Name: '{name}'}})
-    # -[:hasFootprint]->(g1:Geometry)
-    # -[r:relates]->(g2:Geometry)
-    # <-[:hasFootprint]-(other:{source})
-
-    # WHERE r.Distance_between <= {distance}
-
-    # WITH start, collect(DISTINCT {{
-    #     id: other.ID,
-    #     name: other.Name
-    # }}) AS target
-
-    # RETURN {{
-    #     start: {{
-    #         id: start.ID,
-    #         name: start.Name
-    #     }},
-    #     target: target
-    # }} AS result
-    # """
-    return {**state, "cypher_query": query}
-
-
 def build_distance_between_query(state):
     entities = state.get("spatial_entities", [])
     source = get_source_type(state)
@@ -719,6 +701,25 @@ def build_distance_between_query(state):
             }}]
         }} AS result
     """
+    return {**state, "cypher_query": query}
+
+def build_radius_and_direction_query(state):
+    distance = state["distance_constraint"]
+    direction = state.get("cardinal_direction")
+    source = get_source_type(state)
+    name = get_source_name(state)
+
+    # First get the ID of the source entity
+    get_id_query = f"""
+    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
+    """
+    records = graph.query(get_id_query)
+    if not records or len(records) == 0:
+        return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+    
+    # Now calculate the radius query using the retrieved ID
+    query = srf.calculate_radius(records[0]["ID"], name, state["target_type"], distance, direction)
+
     return {**state, "cypher_query": query}
 
 # execute query
@@ -816,6 +817,7 @@ workflow.add_node("add_relates_type", add_relates_type)
 workflow.add_node("build_direction_query", build_direction_query)
 workflow.add_node("build_radius_query", build_radius_query)
 workflow.add_node("build_distance_between_query", build_distance_between_query)
+workflow.add_node("build_radius_and_direction_query", build_radius_and_direction_query)
 
 workflow.add_node("execute_query", execute_query)
 workflow.add_node("verbalize", verbalize)
@@ -850,7 +852,8 @@ workflow.add_conditional_edges(
     {
         "direction": "build_direction_query",
         "radius": "build_radius_query",
-        "distance_between": "build_distance_between_query"
+        "distance_between": "build_distance_between_query",
+        "radius_and_direction": "build_radius_and_direction_query"
     }
 )
 
@@ -861,6 +864,7 @@ workflow.add_edge("build_touches_query", "execute_query")
 workflow.add_edge("build_direction_query", "execute_query")
 workflow.add_edge("build_radius_query", "execute_query")
 workflow.add_edge("build_distance_between_query", "execute_query")
+workflow.add_edge("build_radius_and_direction_query", "execute_query")
 
 workflow.add_edge("execute_query", "verbalize")
 workflow.add_edge("verbalize", END)
@@ -906,7 +910,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What to the north of Münster?"
+    example_question = "What lies next to Münster on the right?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-4o")

@@ -74,8 +74,9 @@ def calculate_distances(neo_result):
 #        name of the start entity, 
 #        type of the target entity (e.g. "City"),
 #        the search radius in meters
+#        the cardinal direction (optional)
 # output: a Cypher query which is executed in the agent
-def calculate_radius(start_id, start_name, target_type, distance):
+def calculate_radius(start_id, start_name, target_type, distance, direction=None):
 
     # get type from the id by reading the first letter
     start_type = start_id[0]
@@ -118,12 +119,38 @@ def calculate_radius(start_id, start_name, target_type, distance):
         candidates.geometry.distance(start_geom) <= distance
     ]
 
-    # No entities in the specified direction
+    # No entities in the specified distance
     if len(result) == 0:
         return "RETURN null AS result LIMIT 0"
     
     # Delete start entity from the result
     result = result[result.index != start_id]
+
+    # If a direction is specified, calculate the cardinal direction of each entity in the result and filter by the specified direction
+    if direction:
+        result = result.to_crs("EPSG:4326")
+        start_centroid = start_geom.centroid
+        start_centroid = gpd.GeoSeries([start_centroid], crs=gdf.crs).to_crs("EPSG:4326").iloc[0]
+        # Calculate the centroid of each geometry for cardinal direction calculation
+        centroids = result.Geometry.centroid
+
+        # Calculate directions with list comprehension
+        directions = [
+            get_cardinal_direction(
+                (start_centroid.x, start_centroid.y),
+                (c.x, c.y)
+            )
+            for c in centroids
+        ]
+
+        result["direction"] = directions
+
+        # Filter
+        result = result[result["direction"] == direction]
+
+        # No entities in the specified distance and direction
+        if len(result) == 0:
+            return "RETURN null AS result LIMIT 0"
     
     # Get the IDs of the entities in the specified distance
     ids_in_distance = result.index.tolist()
