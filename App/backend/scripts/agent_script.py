@@ -20,6 +20,9 @@ import json
 import re
 
 import os
+import threading
+import time
+import logging
 
 from typing import List
 from pydantic import BaseModel, Field
@@ -56,6 +59,7 @@ def init_db():
         )
     )
 
+# Start non-blocking connection attempts at import time
 init_db()
 
 instructions = """Analyze the input query and extract the following parameters.
@@ -70,7 +74,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - The relationship can only be one of the following:
       - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
       - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
-      - "touches": geographic neighbors (lies next to, is next to, touches)
+      - "touches": geographic neighbors (lies next to, is next to, touches, directly)
       - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
       - "None": if none of the above apply
   </constraints>
@@ -79,10 +83,10 @@ instructions = """Analyze the input query and extract the following parameters.
 <cardinal_direction>
 <task>extract one of the following relationships if mentioned ("northern | southern | eastern | western | northeastern | northwestern | southeastern | southwestern)</task>
   <constraints>
-    - "north", "northern" → ALWAYS cardinal_direction = "northern"
-    - "south", "southern" → ALWAYS cardinal_direction = "southern"
-    - "east", "eastern" → ALWAYS cardinal_direction = "eastern"
-    - "west", "western" → ALWAYS cardinal_direction = "western"
+    - "north", "northern", "over" → ALWAYS cardinal_direction = "northern"
+    - "south", "southern", "under" → ALWAYS cardinal_direction = "southern"
+    - "east", "eastern", "right" → ALWAYS cardinal_direction = "eastern"
+    - "west", "western", "left" → ALWAYS cardinal_direction = "western"
     - "northeast", "northeastern" → ALWAYS cardinal_direction = "northeastern"
     - "northwest", "northwestern" → ALWAYS cardinal_direction = "northwestern"
     - "southeast", "southeastern" → ALWAYS cardinal_direction = "southeastern"
@@ -129,7 +133,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - Default hierarchy is City.
     - German keywords:
         - Stadt -> City
-        - Verwaltungsgemeinschaft -> AdministrativeCommunity
+        - Verwaltungsgemeinde -> AdministrativeCommunity
         - Kreis -> District
         - Regierungsbezirk -> AdministrativeDistrict
         - Bundesland -> FederalState
@@ -142,7 +146,10 @@ instructions = """Analyze the input query and extract the following parameters.
     - A entity name is a proper name of a place in Germany
     - It can be written in another language
     - If the name is in a different language than German, translate the name to German
-      - (f.e. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+      - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+    - If there are multiple entities, put the start entity first and then the target entity:
+      - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
+        because the query must check from Münster whether Bocholt lies western of it
     - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
   </constraints>
 </spatial_entities>
@@ -152,10 +159,18 @@ instructions = """Analyze the input query and extract the following parameters.
   <constraints>
     - Return one of the following types: 
         City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState
-    - Return the answer as a list of strings (there can be multiple target types in one question, e.g. "Which Cities and Districts lie within North Rhine-Westphalia?" → ["City", "District"])
     - The target type is what is asked for in the question
+    - The default value is City, when no type is mentioned
   </constraints>
-</target_type>
+</target_type> 
+
+<decision_question>
+  <task> Determine whether the question is a decision_question. </task>
+  <constraints>
+    - Return True, when the user asks for a yes or no answer (e.g. "Does Münster lie northern of Selm?")
+    - Else return False
+  </constrains>
+</decision_question>
 
 Query: {query}
 
@@ -181,6 +196,7 @@ class ParameterExtraction(BaseModel):
     distance_between: bool = Field(description="whether or not two entities are explicitly compared")
     hierarchy: List[HierarchyItem] = Field(default_factory=list, description="hierarchy assignment for the entities mentioned in the question")
     target_type: str = Field(description="the type of the target entity that is asked for in the question")
+    decision_question: bool = Field(description="whether or not the question is a decision question")
 
 class AgentState(TypedDict):
     # INPUT
@@ -198,6 +214,7 @@ class AgentState(TypedDict):
     radius: bool
     hierarchy: List[HierarchyItem]
     target_type: str
+    decision_question: bool
     route: str
 
     # OUTPUT
@@ -271,64 +288,18 @@ def extract_parameters_manually(question: str) -> ParameterExtraction:
     structured output or exhibit tool-calling behavior.
     """
     global llm
-    
-    prompt = f"""You are a JSON data extractor. Do NOT call any function. Do NOT use tools.
-Just return a plain JSON object describing the question parameters.
+    prompt = f"""
+        You are a JSON data extractor. Do NOT call any function. Do NOT use tools.
+        Just return a plain JSON object describing the question parameters.
 
-QUESTION: "{question}"
+        {instructions.format(query=question)}
 
-Return ONLY a JSON object with EXACTLY these fields. No markdown, no code blocks, no explanations:
+        Return a JSON object that follows exactly this JSON Schema:
+        {json.dumps(ParameterExtraction.model_json_schema(), indent=2)}
 
-{{
-  "language": "English",
-  "spatial_relationship": "within",
-  "cardinal_direction": "",
-  "spatial_entities": ["EntityName"],
-  "distance_constraint": 0,
-  "radius": false,
-  "distance_between": false,
-  "hierarchy": [["EntityName", "City"]],
-  "target_type": "District"
-}}
-
-FIELD RULES:
-- "language": Language of the question ("English", "German", etc.)
-- "spatial_relationship": ONE of:
-    "location" (Where lies, Where is located),
-    "within" (lies in, belongs to, is in),
-    "touches" (next to, borders),
-    "relates" (how far, direction, distance),
-    "None" (none of the above)
-- "cardinal_direction": ONE of "northern", "southern", "eastern", "western",
-    "northeastern", "northwestern", "southeastern", "southwestern", or ""
-- "spatial_entities": List of place names mentioned in the question (without type)
-- "distance_constraint": Distance in METERS as float (km → multiply by 1000). 0 if no distance.
-- "radius": true ONLY if "within X km radius" or similar is mentioned
-- "distance_between": true ONLY if asking distance BETWEEN two entities
-- "hierarchy": List of [entity_name, type] pairs.
-    Type is one of: "City", "District", "AdministrativeDistrict", "FederalState"
-- "target_type": What the question asks for. ONE of:
-    "City", "District", "AdministrativeDistrict", "FederalState"
-
-EXAMPLES:
-
-Q: "In which district lies Bocholt?"
-{{"language":"English","spatial_relationship":"within","cardinal_direction":"","spatial_entities":["Bocholt"],"distance_constraint":0,"radius":false,"distance_between":false,"hierarchy":[["Bocholt","City"]],"target_type":"District"}}
-
-Q: "What is the distance between Bonn and Cologne?"
-{{"language":"English","spatial_relationship":"relates","cardinal_direction":"","spatial_entities":["Bonn","Cologne"],"distance_constraint":0,"radius":false,"distance_between":true,"hierarchy":[["Bonn","City"],["Cologne","City"]],"target_type":"City"}}
-
-Q: "Which cities are within 10 km of Bonn?"
-{{"language":"English","spatial_relationship":"relates","cardinal_direction":"","spatial_entities":["Bonn"],"distance_constraint":10000,"radius":true,"distance_between":false,"hierarchy":[["Bonn","City"]],"target_type":"City"}}
-
-Q: "Which administrative districts border Düsseldorf?"
-{{"language":"English","spatial_relationship":"touches","cardinal_direction":"","spatial_entities":["Düsseldorf"],"distance_constraint":0,"radius":false,"distance_between":false,"hierarchy":[["Düsseldorf","AdministrativeDistrict"]],"target_type":"AdministrativeDistrict"}}
-
-Q: "Which cities lie northern of Münster?"
-{{"language":"English","spatial_relationship":"relates","cardinal_direction":"northern","spatial_entities":["Münster"],"distance_constraint":0,"radius":false,"distance_between":false,"hierarchy":[["Münster","City"]],"target_type":"City"}}
-
-Now respond for: "{question}"
-Return ONLY the JSON object, nothing else:"""
+        Now respond for: "{question}"
+        Return ONLY the JSON object, nothing else:
+    """
 
     # Direct llm.invoke - no structured_output, no tools
     raw = llm.invoke(prompt).content
@@ -352,6 +323,7 @@ Return ONLY the JSON object, nothing else:"""
         "distance_between": False,
         "hierarchy": [],
         "target_type": "City",
+        "decision_question": False
     }
     
     # If the model returns a tool call format: convert
@@ -380,7 +352,6 @@ Return ONLY the JSON object, nothing else:"""
         parsed = {**defaults, **parsed}
     
     return ParameterExtraction(**parsed)
-
 
 # Interpret Query with Provider-Splitting
 def interpret_query(state):
@@ -413,8 +384,9 @@ def interpret_query(state):
     if response.spatial_relationship == "None":
         return {
             **state,
-            "result": None,
-            "route": "verbalize"
+            "result": "Not valid",
+            "route": "verbalize",
+            "language": response.language
         }
 
     return {
@@ -428,6 +400,7 @@ def interpret_query(state):
         "distance_constraint": response.distance_constraint,
         "hierarchy": response.hierarchy,
         "target_type": response.target_type,
+        "decision_question": response.decision_question,
         "route": "add_inheritance"
     }
 
@@ -519,6 +492,11 @@ def build_location_query(state):
     return {**state, "cypher_query": query}
 
 # Within
+def build_within_same_class(state):
+    # within_same does not exist, but the code sometimes goes there. To prevent this error, this function returns a Null query
+    query = "RETURN null AS result LIMIT 0"
+    return {**state, "cypher_query": query}
+
 def build_within_super_class(state):
     source = get_source_type(state)
     target = state["target_type"]
@@ -593,13 +571,17 @@ def build_touches_query(state):
     source = get_source_type(state)
     name = get_source_name(state)
 
+    # Filter for direction if specified
+    direction = state.get("cardinal_direction")
+    direction_filter = f"{{Rel_Position: '{direction}'}}" if direction else ""
+
     return {
         **state,
         "cypher_query": f"""
         MATCH 
         (start:{source} {{Name: '{name}'}})
         -[:hasFootprint]->(:Geometry)
-        <-[:touches]-(:Geometry)
+        -[:touches {direction_filter}]->(:Geometry)
         <-[:hasFootprint]-(neighbor:{source})
 
         WITH start, collect(DISTINCT {{
@@ -621,6 +603,9 @@ def build_touches_query(state):
 def select_relates_type(state):
     if state["distance_between"] == True:
         return "distance_between"
+    
+    if state["radius"] == True or state["distance_constraint"] is not None and state.get("cardinal_direction"):
+        return "radius_and_direction"
 
     if state["radius"] == True:
         return "radius"
@@ -635,7 +620,6 @@ def add_relates_type(state):
         **state,
         "relates_type": select_relates_type(state)
     }
-
 
 def build_direction_query(state):
     direction = state.get("cardinal_direction")
@@ -655,36 +639,23 @@ def build_direction_query(state):
 
     return {**state, "cypher_query": query}
 
-
 def build_radius_query(state):
     distance = state["distance_constraint"]
     source = get_source_type(state)
     name = get_source_name(state)
 
-    query = f"""
-    MATCH 
-    (start:{source} {{Name: '{name}'}})
-    -[:hasFootprint]->(g1:Geometry)
-    -[r:relates]->(g2:Geometry)
-    <-[:hasFootprint]-(other:{source})
-
-    WHERE r.Distance_between <= {distance}
-
-    WITH start, collect(DISTINCT {{
-        id: other.ID,
-        name: other.Name
-    }}) AS target
-
-    RETURN {{
-        start: {{
-            id: start.ID,
-            name: start.Name
-        }},
-        target: target
-    }} AS result
+    # First get the ID of the source entity
+    get_id_query = f"""
+    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
     """
-    return {**state, "cypher_query": query}
+    records = graph.query(get_id_query)
+    if not records or len(records) == 0:
+        return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+    
+    # Now calculate the radius query using the retrieved ID
+    query = srf.calculate_radius(records[0]["ID"], name, state["target_type"], distance)
 
+    return {**state, "cypher_query": query}
 
 def build_distance_between_query(state):
     entities = state.get("spatial_entities", [])
@@ -714,6 +685,25 @@ def build_distance_between_query(state):
     """
     return {**state, "cypher_query": query}
 
+def build_radius_and_direction_query(state):
+    distance = state["distance_constraint"]
+    direction = state.get("cardinal_direction")
+    source = get_source_type(state)
+    name = get_source_name(state)
+
+    # First get the ID of the source entity
+    get_id_query = f"""
+    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
+    """
+    records = graph.query(get_id_query)
+    if not records or len(records) == 0:
+        return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+    
+    # Now calculate the radius query using the retrieved ID
+    query = srf.calculate_radius(records[0]["ID"], name, state["target_type"], distance, direction)
+
+    return {**state, "cypher_query": query}
+
 # execute query
 def execute_query(state):
     global graph
@@ -724,34 +714,61 @@ def execute_query(state):
     if state["distance_between"] == True:
         cleaned = srf.calculate_distances(cleaned)
 
+    # When it is a decision question, only show the geometries mentioned in the question
+    if state["decision_question"] == True:
+        result[0]["result"]["target"] = [item for item in result[0]["result"]["target"] if item["name"] in state["spatial_entities"]]
+
     return {**state, "result": cleaned}
 
 # answer
 def verbalize(state):
-    prompt = f"""
-Turn the result into natural language based on the context of the question.
 
-Question: {state['question']}
-Result: {state['result']}
+    # Answer when the result is not valid
+    if state["result"] == "Not valid":
+        prompt = f"""
+            The user provided a question that does not seem to be about the geometries of Germany. The question was: "{state['question']}"
+        """
+        if "language" in state:
+            prompt += f"""
+                Answer in this Language: {state['language']}
+            """
+        prompt += f"""
+            Answer the following:
+            Hello. This chatbot answers only questions about the geometries of Germany. Please try again with a different question.
+        """
+    else:
 
-Answer in this Language: {state['language']}
+        # Regular answer
+        prompt = f"""
+        Turn the result into natural language based on the context of the question.
 
-Rules:
-- If the result is a number, it is a Distance in m. Round it to km
-- The first letter of the id states which hierarchy level the result has:
-    - C = City
-    - D = District
-    - A = Administrative District
-    - F = Federal State
-  include the level in the answer but NOT the id
+        Question: {state['question']}
+        Result: {state['result']}
 
-- If the result is empty answer:
-    "Hello. This chatbot answers only questions about the geometries of Germany. Please try again with a different question."
-- The Result is never a question
-- Put only the result in the Answer NEVER the question
-- Do not use Markdown or code formatting in the answer, just plain text
-"""
-    if state['result'] is None or (isinstance(state['result'], list) and len(state['result']) == 0):
+        Answer in this Language: {state['language']}
+        If language is German, use the following translations for the hierarchy levels:
+        - City -> Stadt
+        - AdministrativeCommunity -> Verwaltungsgemeinde
+        - District -> Kreis
+        - AdministrativeDistrict -> Regierungsbezirk
+        - FederalState -> Bundesland
+
+        Rules:
+        - If the result is a number, it is a Distance in m. Round it to km
+        - The first letter of the id states which hierarchy level the result has:
+            - C = City
+            - D = District
+            - A = Administrative District
+            - F = Federal State
+        include the level in the answer but NOT the id
+
+        - If the result is empty answer:
+            Answer the question with the information, that nothing no geometry found.
+        - The Result is never a question
+        - Put only the result in the Answer NEVER the question
+        - Do not use Markdown or code formatting in the answer, just plain text
+        """
+    if state['result'] is None or state['result'] == "Not valid" or (isinstance(state['result'], list) and len(state['result']) == 0):
         return {
             **state,
             "result": {
@@ -777,6 +794,7 @@ workflow.add_node("interpret_query", interpret_query)
 workflow.add_node("add_inheritance", add_inheritance)
 
 workflow.add_node("build_location_query", build_location_query)
+workflow.add_node("build_within_same_class", build_within_same_class)
 workflow.add_node("build_within_super_class", build_within_super_class)
 workflow.add_node("build_within_sub_class", build_within_sub_class)
 workflow.add_node("build_touches_query", build_touches_query)
@@ -786,6 +804,7 @@ workflow.add_node("add_relates_type", add_relates_type)
 workflow.add_node("build_direction_query", build_direction_query)
 workflow.add_node("build_radius_query", build_radius_query)
 workflow.add_node("build_distance_between_query", build_distance_between_query)
+workflow.add_node("build_radius_and_direction_query", build_radius_and_direction_query)
 
 workflow.add_node("execute_query", execute_query)
 workflow.add_node("verbalize", verbalize)
@@ -806,6 +825,7 @@ workflow.add_conditional_edges(
     select_query_type,
     {
         "location_action": "build_location_query",
+        "within_same_class": "build_within_same_class",
         "within_super_class": "build_within_super_class",
         "within_sub_class": "build_within_sub_class",
         "touches_action": "build_touches_query",
@@ -820,17 +840,20 @@ workflow.add_conditional_edges(
     {
         "direction": "build_direction_query",
         "radius": "build_radius_query",
-        "distance_between": "build_distance_between_query"
+        "distance_between": "build_distance_between_query",
+        "radius_and_direction": "build_radius_and_direction_query"
     }
 )
 
 workflow.add_edge("build_location_query", "execute_query")
+workflow.add_edge("build_within_same_class", "execute_query")
 workflow.add_edge("build_within_super_class", "execute_query")
 workflow.add_edge("build_within_sub_class", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
 workflow.add_edge("build_direction_query", "execute_query")
 workflow.add_edge("build_radius_query", "execute_query")
 workflow.add_edge("build_distance_between_query", "execute_query")
+workflow.add_edge("build_radius_and_direction_query", "execute_query")
 
 workflow.add_edge("execute_query", "verbalize")
 workflow.add_edge("verbalize", END)
@@ -854,9 +877,10 @@ def fancy_print(result):
     console.print("[bold yellow]FULL OUTPUT[/bold yellow]")
     # Format hierarchy to put it in a JSON
     i = 0
-    for item in result["hierarchy"]:
-        result["hierarchy"][i] = item.model_dump()
-        i += 1
+    if result.get("hierarchy"):
+        for item in result["hierarchy"]:
+            result["hierarchy"][i] = item.model_dump()
+            i += 1
     console.print(JSON.from_data(result))
 
     console.print("\n" + "═"*80 + "\n")
@@ -876,10 +900,10 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What is the distance between Siegburg and Hameln?"
+    example_question = "Where is Münster located?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
-        result = run_question(example_question, example_api_key, "gpt-5-nano")
+        result = run_question(example_question, example_api_key, "gpt-4o")
 
         fancy_print(result)
     else:

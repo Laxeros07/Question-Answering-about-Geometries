@@ -17,7 +17,7 @@ def main(generate=["all"]):
         within = process_within(cities, administrativeCommunities, districts, administrativeDistricts, federalStates)
         write_within(within)
     if "all" in generate or "touches" in generate:
-        touches = process_touches(cities, administrativeCommunities, districts, administrativeDistricts)
+        touches = process_touches(cities, administrativeCommunities, districts, administrativeDistricts, federalStates)
         write_touches(touches)
     if "relates" in generate:
         # Takes really long to process, so only generate if specified

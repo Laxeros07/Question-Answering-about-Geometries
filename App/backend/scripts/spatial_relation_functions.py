@@ -70,8 +70,113 @@ def calculate_distances(neo_result):
     return neo_result
 
 # calculate_radius
+# input: ID of the start entity, 
+#        name of the start entity, 
+#        type of the target entity (e.g. "City"),
+#        the search radius in meters
+#        the cardinal direction (optional)
+# output: a Cypher query which is executed in the agent
+def calculate_radius(start_id, start_name, target_type, distance, direction=None):
 
-# Calculate the realtive postion of two points
+    # get type from the id by reading the first letter
+    start_type = start_id[0]
+
+    # get all entites of start_type from the geometries.csv
+    csv_path = Path(__file__).parent.parent / "data" / "geometries.csv"
+    df = pd.read_csv(csv_path)
+
+    # WKT -> Geometry
+    df["Geometry"] = df["Geometry"].apply(wkt.loads)
+
+    # Create index of df
+    df.set_index("ID", inplace=True)
+
+    # GeoDataFrame 
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry="Geometry",
+        crs="EPSG:4326"
+    )
+
+    # Project to a metric CRS for distance calculation
+    gdf = gdf.to_crs("EPSG:25832")
+
+    # Filter type
+    gdf = gdf[gdf.index.str.startswith(start_type)]
+
+    # Startgeometry
+    start_geom = gdf.loc[start_id].Geometry
+
+    # Create buffer around the start geometry
+    search_area = start_geom.buffer(distance)
+
+    # Only search in the bounding box of the buffer for performance reasons
+    candidate_idx = list(gdf.sindex.intersection(search_area.bounds))
+    candidates = gdf.iloc[candidate_idx]
+
+    # Filter geometries that are within the distance
+    result = candidates[
+        candidates.geometry.distance(start_geom) <= distance
+    ]
+
+    # No entities in the specified distance
+    if len(result) == 0:
+        return "RETURN null AS result LIMIT 0"
+    
+    # Delete start entity from the result
+    result = result[result.index != start_id]
+
+    # If a direction is specified, calculate the cardinal direction of each entity in the result and filter by the specified direction
+    if direction:
+        result = result.to_crs("EPSG:4326")
+        start_centroid = start_geom.centroid
+        start_centroid = gpd.GeoSeries([start_centroid], crs=gdf.crs).to_crs("EPSG:4326").iloc[0]
+        # Calculate the centroid of each geometry for cardinal direction calculation
+        centroids = result.Geometry.centroid
+
+        # Calculate directions with list comprehension
+        directions = [
+            get_cardinal_direction(
+                (start_centroid.x, start_centroid.y),
+                (c.x, c.y)
+            )
+            for c in centroids
+        ]
+
+        result["direction"] = directions
+
+        # Filter
+        result = result[result["direction"] == direction]
+
+        # No entities in the specified distance and direction
+        if len(result) == 0:
+            return "RETURN null AS result LIMIT 0"
+    
+    # Get the IDs of the entities in the specified distance
+    ids_in_distance = result.index.tolist()
+
+    # Generate a Cypher query to get the names of the IDs in the specified distance
+    query = f"""
+        MATCH (other:{target_type})
+        WHERE other.ID IN {ids_in_distance}
+
+        WITH collect(DISTINCT {{
+            id: other.ID,
+            name: other.Name
+        }}) AS target
+
+        RETURN {{
+            start: {{
+                id: "{start_id}",
+                name: "{start_name}"
+            }},
+            target: target
+        }} AS result
+        """
+    
+    return query
+
+# Calculate the relative postion of two points
 # Source: https://mapscaping.com/how-to-calculate-bearing-between-two-coordinates/
 # input: two points (lat, long)
 # output: the cardinal direction of the second point in relation to the first point
@@ -133,37 +238,41 @@ def calculate_cardinal_direction(start_id, start_name, target_type, direction):
 
     # Create index of df
     df.set_index("ID", inplace=True)
-    df = df.loc[df.index.str.startswith(start_type)]
+    #df = df.loc[df.index.str.startswith(start_type)]
 
-    # df -> shapley geometry
-    start_df = df.loc[start_id]
-    start_geom = shape(wkt.loads(start_df["Geometry"]))
+    # Shapely geometry
+    df["Geometry"] = df["Geometry"].apply(wkt.loads)
+    
+    gdf = gpd.GeoDataFrame(df, geometry="Geometry", crs="EPSG:4326")
+    # Filter type
+    gdf = gdf[gdf.index.str.startswith(start_type)]
 
-    # Get start centroid
+    # Start geometry
+    start_geom = gdf.loc[start_id, "Geometry"]
     start_centroid = start_geom.centroid
 
-    # String -> shapely geometry
-    df["Geometry"] = df["Geometry"].apply(
-        lambda x: wkt.loads(x)
-    )
+    # Calculate the centroid of each geometry for cardinal direction calculation
+    centroids = gdf.Geometry.centroid
 
-    # DataFrame -> GeoDataFrame
-    gdf = gpd.GeoDataFrame(df, geometry="Geometry", crs="EPSG:4326")
+    # Calculate directions with list comprehension
+    directions = [
+        get_cardinal_direction(
+            (start_centroid.x, start_centroid.y),
+            (c.x, c.y)
+        )
+        for c in centroids
+    ]
 
-    # Calculate the cardinal direction for each entity and filter only the specified ones
-    ids_in_direction = []
-    for _, row in gdf.iterrows():
-        centroid = row["Geometry"].centroid
-        # returns a string which holds the cardinal direction
-        cardinal_direction = get_cardinal_direction((start_centroid.x, start_centroid.y), (centroid.x, centroid.y))
+    gdf["direction"] = directions
 
-        if cardinal_direction == direction:
-            # row.name is the id because we set the index to ID
-            ids_in_direction.append(row.name)
-    
+    # Filter
+    result = gdf[gdf["direction"] == direction]
+
     # No entities in the specified direction
-    if not ids_in_direction:
+    if len(result) == 0:
         return "RETURN null AS result LIMIT 0"
+
+    ids_in_direction = result.index.tolist()
 
     # Generate a Cypher query to get the names of the IDs in the specified direction
     query = f"""
