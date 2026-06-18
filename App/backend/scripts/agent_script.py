@@ -38,13 +38,22 @@ except (ImportError, SystemError):
 #llm = None
 graph = None
 
-# function only executed once when starting the app
 def init_db():
     global graph
+
     graph = Neo4jGraph(
-        url="neo4j://localhost:7687",
-        username="neo4j",
-        password="chatwithgermany"
+        url=os.getenv(
+            "NEO4J_URI",
+            "bolt://localhost:7687"
+        ),
+        username=os.getenv(
+            "NEO4J_USER",
+            "neo4j"
+        ),
+        password=os.getenv(
+            "NEO4J_PASSWORD",
+            "chatwithgermany"
+        )
     )
 
 init_db()

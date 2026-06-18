@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import json
 import traceback
-from scripts.neo4j_QA import run_query
 from scripts.agent_script import run_question
 
 router = APIRouter(prefix="/api/chat")
