@@ -214,14 +214,15 @@ def buildTouchesArray(polygons):
     return result
 
 # Calculates the touches relation
-def process_touches(cities, administrativeCommunities, districts, administrativeDistricts):
+def process_touches(cities, administrativeCommunities, districts, administrativeDistricts, federalStates):
 
     cities_array = buildTouchesArray(cities)
     administrativeCommunities_array = buildTouchesArray(administrativeCommunities)
     districts_array = buildTouchesArray(districts)
     administrativeDistricts_array = buildTouchesArray(administrativeDistricts)
+    federalStates_array = buildTouchesArray(federalStates)
 
-    return cities_array + administrativeCommunities_array + districts_array + administrativeDistricts_array
+    return cities_array + administrativeCommunities_array + districts_array + administrativeDistricts_array + federalStates_array
 
 # Calculates the distance between the borders of the geometries
 def calculate_distances(polygons):

@@ -124,7 +124,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - Default hierarchy is City.
     - German keywords:
         - Stadt -> City
-        - Verwaltungsgemeinschaft -> AdministrativeCommunity
+        - Verwaltungsgemeinde -> AdministrativeCommunity
         - Kreis -> District
         - Regierungsbezirk -> AdministrativeDistrict
         - Bundesland -> FederalState
@@ -739,7 +739,7 @@ def verbalize(state):
         Answer in this Language: {state['language']}
         If language is German, use the following translations for the hierarchy levels:
         - City -> Stadt
-        - AdministrativeCommunity -> Verwaltungsgemeinschaft
+        - AdministrativeCommunity -> Verwaltungsgemeinde
         - District -> Kreis
         - AdministrativeDistrict -> Regierungsbezirk
         - FederalState -> Bundesland
