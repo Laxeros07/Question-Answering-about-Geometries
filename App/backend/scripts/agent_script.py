@@ -137,7 +137,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - A entity name is a proper name of a place in Germany
     - It can be written in another language
     - If the name is in a different language than German, translate the name to German
-      - (f.e. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+      - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
     - If there are multiple entities, put the start entity first and then the target entity:
       - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
         because the query must check from Münster whether Bocholt lies western of it
@@ -150,7 +150,6 @@ instructions = """Analyze the input query and extract the following parameters.
   <constraints>
     - Return one of the following types: 
         City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState
-    - Return the answer as a list of strings (there can be multiple target types in one question, e.g. "Which Cities and Districts lie within North Rhine-Westphalia?" → ["City", "District"])
     - The target type is what is asked for in the question
     - The default value is City, when no type is mentioned
   </constraints>
@@ -280,66 +279,18 @@ def extract_parameters_manually(question: str) -> ParameterExtraction:
     structured output or exhibit tool-calling behavior.
     """
     global llm
-    
-    prompt = f"""You are a JSON data extractor. Do NOT call any function. Do NOT use tools.
-Just return a plain JSON object describing the question parameters.
+    prompt = f"""
+        You are a JSON data extractor. Do NOT call any function. Do NOT use tools.
+        Just return a plain JSON object describing the question parameters.
 
-QUESTION: "{question}"
+        {instructions.format(query=question)}
 
-Return ONLY a JSON object with EXACTLY these fields. No markdown, no code blocks, no explanations:
+        Return a JSON object that follows exactly this JSON Schema:
+        {json.dumps(ParameterExtraction.model_json_schema(), indent=2)}
 
-{{
-  "language": "English",
-  "spatial_relationship": "within",
-  "cardinal_direction": "",
-  "spatial_entities": ["EntityName"],
-  "distance_constraint": 0,
-  "radius": false,
-  "distance_between": false,
-  "hierarchy": [["EntityName", "City"]],
-  "target_type": "District",
-  "decision_question": false
-}}
-
-FIELD RULES:
-- "language": Language of the question ("English", "German", etc.)
-- "spatial_relationship": ONE of:
-    "location" (Where lies, Where is located),
-    "within" (lies in, belongs to, is in),
-    "touches" (next to, borders),
-    "relates" (how far, direction, distance),
-    "None" (none of the above)
-- "cardinal_direction": ONE of "northern", "southern", "eastern", "western",
-    "northeastern", "northwestern", "southeastern", "southwestern", or ""
-- "spatial_entities": List of place names mentioned in the question (without type)
-- "distance_constraint": Distance in METERS as float (km → multiply by 1000). 0 if no distance.
-- "radius": true ONLY if "within X km radius" or similar is mentioned
-- "distance_between": true ONLY if asking distance BETWEEN two entities
-- "hierarchy": List of [entity_name, type] pairs.
-    Type is one of: "City", "District", "AdministrativeDistrict", "FederalState"
-- "target_type": What the question asks for. ONE of:
-    "City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState"
-- "decision_question": Whether the question is a Yes or No question: True or False
-
-EXAMPLES:
-
-Q: "In which district lies Bocholt?"
-{{"language":"English","spatial_relationship":"within","cardinal_direction":"","spatial_entities":["Bocholt"],"distance_constraint":0,"radius":false,"distance_between":false,"hierarchy":[["Bocholt","City"]],"target_type":"District"}}
-
-Q: "What is the distance between Bonn and Cologne?"
-{{"language":"English","spatial_relationship":"relates","cardinal_direction":"","spatial_entities":["Bonn","Cologne"],"distance_constraint":0,"radius":false,"distance_between":true,"hierarchy":[["Bonn","City"],["Cologne","City"]],"target_type":"City"}}
-
-Q: "Which cities are within 10 km of Bonn?"
-{{"language":"English","spatial_relationship":"relates","cardinal_direction":"","spatial_entities":["Bonn"],"distance_constraint":10000,"radius":true,"distance_between":false,"hierarchy":[["Bonn","City"]],"target_type":"City"}}
-
-Q: "Which administrative districts border Düsseldorf?"
-{{"language":"English","spatial_relationship":"touches","cardinal_direction":"","spatial_entities":["Düsseldorf"],"distance_constraint":0,"radius":false,"distance_between":false,"hierarchy":[["Düsseldorf","AdministrativeDistrict"]],"target_type":"AdministrativeDistrict"}}
-
-Q: "Which cities lie northern of Münster?"
-{{"language":"English","spatial_relationship":"relates","cardinal_direction":"northern","spatial_entities":["Münster"],"distance_constraint":0,"radius":false,"distance_between":false,"hierarchy":[["Münster","City"]],"target_type":"City"}}
-
-Now respond for: "{question}"
-Return ONLY the JSON object, nothing else:"""
+        Now respond for: "{question}"
+        Return ONLY the JSON object, nothing else:
+    """
 
     # Direct llm.invoke - no structured_output, no tools
     raw = llm.invoke(prompt).content
@@ -392,7 +343,6 @@ Return ONLY the JSON object, nothing else:"""
         parsed = {**defaults, **parsed}
     
     return ParameterExtraction(**parsed)
-
 
 # Interpret Query with Provider-Splitting
 def interpret_query(state):
@@ -787,7 +737,7 @@ def verbalize(state):
         Result: {state['result']}
 
         Answer in this Language: {state['language']}
-        If language is german, use the following translations for the hierarchy levels:
+        If language is German, use the following translations for the hierarchy levels:
         - City -> Stadt
         - AdministrativeCommunity -> Verwaltungsgemeinschaft
         - District -> Kreis
@@ -918,9 +868,10 @@ def fancy_print(result):
     console.print("[bold yellow]FULL OUTPUT[/bold yellow]")
     # Format hierarchy to put it in a JSON
     i = 0
-    for item in result["hierarchy"]:
-        result["hierarchy"][i] = item.model_dump()
-        i += 1
+    if result.get("hierarchy"):
+        for item in result["hierarchy"]:
+            result["hierarchy"][i] = item.model_dump()
+            i += 1
     console.print(JSON.from_data(result))
 
     console.print("\n" + "═"*80 + "\n")
@@ -940,7 +891,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Does Bocholt lie western of Münster?"
+    example_question = "Where is Münster located?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-4o")
