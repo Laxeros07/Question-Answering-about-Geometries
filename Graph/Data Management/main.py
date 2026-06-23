@@ -20,6 +20,7 @@ def main(generate=["all"]):
         touches = process_touches(cities, administrativeCommunities, districts, administrativeDistricts, federalStates)
         write_touches(touches)
     if "relates" in generate:
+        # Was taken out of the calculation because it took to long. Is calculated on the fly when the user asks for it.
         # Takes really long to process, so only generate if specified
         relates = process_relates(cities, administrativeCommunities, districts, administrativeDistricts)
         write_relates(relates)

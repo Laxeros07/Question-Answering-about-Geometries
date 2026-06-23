@@ -24,6 +24,9 @@ services:
       neo4j:
         condition: service_healthy
 
+    volumes:
+    - ./backend/data:/app/data
+
 
   neo4j:
     image: neo4j:5

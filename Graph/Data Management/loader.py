@@ -24,12 +24,12 @@ def load_layers():
     # converted_df_f = geopandas_f.to_crs('EPSG:4326')
 
     # filter nrw and niedersachsen out of the federal states layer
-    geopandas_f = geopandas_f[geopandas_f['Name'].isin(['Nordrhein-Westfalen', 'Niedersachsen', 'Bremen'])]
+    #geopandas_f = geopandas_f[geopandas_f['Name'].isin(['Schleswig-Holstein', 'Hamburg', 'Nordrhein-Westfalen', 'Niedersachsen', 'Bremen', 'Hessen', 'Rheinland-Pfalz'])]
     # clip all the other layers to the extent of the federal states layer
-    geopandas_c = geopandas_c[geopandas_c['SN_L'].isin(["03", "04", "05"])]
-    geopandas_v = geopandas_v[geopandas_v['SN_L'].isin(["03", "04", "05"])]
-    geopandas_d = geopandas_d[geopandas_d['SN_L'].isin(["03", "04", "05"])]
-    geopandas_a = geopandas_a[geopandas_a['SN_L'].isin(["03", "04", "05"])]
+    #geopandas_v = geopandas_v[geopandas_v['SN_L'].isin(["01", "02", "03", "04", "05", "06", "07"])]
+    #geopandas_c = geopandas_c[geopandas_c['SN_L'].isin(["01", "02", "03", "04", "05", "06", "07"])]
+    #geopandas_d = geopandas_d[geopandas_d['SN_L'].isin(["01", "02", "03", "04", "05", "06", "07"])]
+    #geopandas_a = geopandas_a[geopandas_a['SN_L'].isin(["01", "02", "03", "04", "05", "06", "07"])]
 
     # Concatenate all dataframes together
     converted_df_all = np.concatenate((geopandas_c.geometry, geopandas_v.geometry, geopandas_d.geometry, geopandas_a.geometry, geopandas_f.geometry))
