@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { clearGeometries } from "../utils/map";
 import { API_BASE_URL } from "../utils/constants";
+import { Link } from "react-router-dom";
 
 export default function useChat(
   apiKey,
@@ -10,7 +11,14 @@ export default function useChat(
 ) {
   const [messages, setMessages] = useState([
     {
-      text: "Hello there! Ask me some questions about the geometry of Germany. If you are not familiar with the federal system of NRW, we recommend to read the short introduction on our homepage",
+      text: (
+        <>
+          Hello there! Ask me some questions about the geometry of Germany. If
+          you are not familiar with the federal system of Germany, we recommend
+          to read the short introduction on our <Link to="/">homepage</Link>.
+          Where You can also find some sample questions.
+        </>
+      ),
       side: "left",
       time: new Date().toLocaleTimeString(),
       appeared: true,
