@@ -250,7 +250,7 @@ def get_llm_config(model_name, api_key):
 
 # JSON Extraction from LLM Responses (for SAIA Models)
 def extract_json_from_text(text: str):
-    """Extrahiert ein JSON-Objekt aus einer (möglicherweise gewrappten) LLM-Antwort."""
+    """Extracts a JSON object from an LLM response (which may be wrapped)."""
     if not text:
         return None
     
