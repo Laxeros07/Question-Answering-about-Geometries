@@ -762,6 +762,9 @@ def verbalize(state):
             - F = Federal State
         include the level in the answer but NOT the id
 
+        - If the result includes more than one startpoint. The entity in question is not unique
+          and refers to more than one place.
+
         - If the result is empty answer:
             Answer the question with the information, that nothing no geometry found.
         - The Result is never a question
