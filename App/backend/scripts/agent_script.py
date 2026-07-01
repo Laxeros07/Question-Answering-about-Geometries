@@ -250,7 +250,7 @@ def get_llm_config(model_name, api_key):
 
 # JSON Extraction from LLM Responses (for SAIA Models)
 def extract_json_from_text(text: str):
-    """Extrahiert ein JSON-Objekt aus einer (möglicherweise gewrappten) LLM-Antwort."""
+    """Extracts a JSON object from an LLM response (which may be wrapped)."""
     if not text:
         return None
     
@@ -466,7 +466,20 @@ def build_location_query(state):
     name = get_source_name(state)
 
     query = f"""
-    MATCH (start:{source} {{Name: '{name}'}})
+    MATCH (start:{source})
+    WHERE toLower(start.Name) CONTAINS toLower("{name}")
+
+    WITH start,
+        CASE
+            WHEN toLower(start.Name) = toLower("{name}") THEN 2
+            WHEN toLower(start.Name) STARTS WITH toLower("{name}") THEN 1
+            ELSE 0
+        END AS score
+
+    WITH start, score
+    ORDER BY score DESC
+
+    LIMIT 10
 
     OPTIONAL MATCH (start)-[:hasFootprint]->(g:Geometry)
 
@@ -475,10 +488,11 @@ def build_location_query(state):
         -[:within*1..]->(:Geometry)
         <-[:hasFootprint]-(parent)
 
-    WITH start, g, collect(DISTINCT {{
-        id: parent.ID,
-        name: parent.Name
-    }}) AS target
+    WITH start, g, score,
+        collect(DISTINCT {{
+            id: parent.ID,
+            name: parent.Name
+        }}) AS target
 
     RETURN {{
         start: {{
@@ -486,6 +500,7 @@ def build_location_query(state):
             name: start.Name,
             centroid: start.Centroid
         }},
+        score: score,
         target: target
     }} AS result
     """
@@ -672,6 +687,7 @@ def build_distance_between_query(state):
         MATCH 
             (n1:{source} {{Name: '{e1}'}}), 
             (n2:{source} {{Name: '{e2}'}})
+
         RETURN {{
             start: {{
                 id: n1.ID,
@@ -719,6 +735,60 @@ def execute_query(state):
         result[0]["result"]["target"] = [item for item in result[0]["result"]["target"] if item["name"] in state["spatial_entities"]]
 
     return {**state, "result": cleaned}
+
+# resolve entity
+def resolve_entity(state):
+    hierarchy = ", ".join(
+        f"{item.entity_name} ({item.hierarchy})"
+        for item in state["hierarchy"]
+    )
+    prompt = f"""
+    You are a selection system for entity disambiguation.
+
+    IMPORTANT:
+    You do NOT perform semantic reasoning or guessing.
+    You ONLY select based on the provided score.
+
+    Each result has a "priority score":
+    - score 2 = exact match (BEST)
+    - score 1 = match starts with the entity name
+    - score 0 = match only contains entity name
+
+    RULES:
+    1. Always prefer higher score values.
+    2. NEVER select a lower score if a higher score exists.
+    3. If multiple entities have the same highest score, you may return multiple indices.
+    4. Do NOT use substring reasoning or external knowledge.
+    5. Do NOT assume that similar names are related.
+
+    Examples:
+    - "Münster" is NOT "Neumünster"
+    - Only choose entities explicitly matching the query or best scored candidates
+
+    OUTPUT FORMAT:
+    - Use the result list
+    - Return a single index in a list if one best match exists
+    - Return a list of indices if multiple candidates share the best score
+    - Return ONLY indices (no explanation, no text, no markdown syntax)
+
+    Question:
+    {state["question"]}
+
+    Spatial entities of question:
+    {state["spatial_entities"]}
+
+    Results (sorted by score descending):
+    {state["result"]}
+
+    Hierarchies:
+    {hierarchy}
+    """
+    indices = llm.invoke(prompt).content
+    indices = json.loads(indices)
+    state["result"] = [state["result"][i] for i in indices]
+
+    return state
+
 
 # answer
 def verbalize(state):
@@ -776,17 +846,25 @@ def verbalize(state):
             **state,
             "result": {
                 "verbalized": llm.invoke(prompt).content,
-                "start": None,
-                "target": None,
+                "geometries": None
             }
         }
+    
+    # Convert to one array which holds all the entities
+    flat = [
+        {"id": obj["start"]["id"], "name": obj["start"]["name"]}
+        for obj in state["result"]
+    ] + [
+        {"id": t["id"], "name": t["name"]}
+        for obj in state["result"]
+        for t in obj.get("target", [])
+    ]
 
     return {
         **state,
         "result": {
             "verbalized": llm.invoke(prompt).content,
-            "start": state["result"][0].get("start"),
-            "target": state["result"][0].get("target"),
+            "geometries": flat
         }
     }
 
@@ -810,6 +888,7 @@ workflow.add_node("build_distance_between_query", build_distance_between_query)
 workflow.add_node("build_radius_and_direction_query", build_radius_and_direction_query)
 
 workflow.add_node("execute_query", execute_query)
+workflow.add_node("resolve_entity", resolve_entity)
 workflow.add_node("verbalize", verbalize)
 
 workflow.add_edge(START, "interpret_query")
@@ -858,7 +937,8 @@ workflow.add_edge("build_radius_query", "execute_query")
 workflow.add_edge("build_distance_between_query", "execute_query")
 workflow.add_edge("build_radius_and_direction_query", "execute_query")
 
-workflow.add_edge("execute_query", "verbalize")
+workflow.add_edge("execute_query", "resolve_entity")
+workflow.add_edge("resolve_entity", "verbalize")
 workflow.add_edge("verbalize", END)
 
 compiled_graph = workflow.compile()

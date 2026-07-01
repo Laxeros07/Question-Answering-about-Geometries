@@ -96,8 +96,8 @@ export default function useChat(
         },
       ]);
 
-      if (resultData.start && onGeoData && resultData.target) {
-        onGeoData([resultData.start, ...resultData.target]);
+      if (onGeoData && resultData.geometries) {
+        onGeoData(resultData.geometries);
       }
     } catch (err) {
       // Backend not reachable

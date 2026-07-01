@@ -5,7 +5,7 @@ export default function useApiKey() {
   const [showModal, setShowModal] = useState(true);
 
   useEffect(() => {
-    const savedKey = localStorage.getItem("openai_key");
+    const savedKey = localStorage.getItem("apiKey");
     // If there already is a key in the local storage, hide the window.
     if (savedKey) {
       setApiKey(savedKey);
