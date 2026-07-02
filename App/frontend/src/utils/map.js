@@ -161,6 +161,7 @@ export function exportLayerToGeoJSON(
   layerOrKey,
   map,
   filename = "map-export.geojson",
+  geojsonOverride = null,
 ) {
   let layer;
 
@@ -176,23 +177,29 @@ export function exportLayerToGeoJSON(
   }
 
   try {
-    // toGeoJSON() adopts the properties that were set above in loadGeometries
-    const geojsonData = layer.toGeoJSON();
+    const geojsonData = geojsonOverride ?? layer.toGeoJSON();
+
     const jsonString = JSON.stringify(geojsonData, null, 2);
 
     const blob = new Blob([jsonString], { type: "application/json" });
+
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
+
     link.href = url;
     link.download = filename;
+
     document.body.appendChild(link);
+
     link.click();
 
     document.body.removeChild(link);
+
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error("Export failed:", error);
+
     alert("An error occurred during export.");
   }
 }

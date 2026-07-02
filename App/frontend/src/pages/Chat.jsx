@@ -5,6 +5,10 @@ import { loadGeometries, exportLayerToGeoJSON } from "../utils/map";
 import useChat from "../hooks/useChat";
 import useApiKey from "../hooks/useApiKey";
 
+// Generalization
+import { processGeometry } from "../utils/geojson";
+import { algorithms } from "../algorithms";
+
 //const SAIA_BASE_URL = "https://chat-ai.academiccloud.de/v1";
 
 // Fallback models in case the API is unavailable
@@ -108,18 +112,58 @@ export default function Chat() {
       .finally(() => setLoadingModels(false));
   }, [apiKey]);*/
 
-  const handleDownload = (layerKey) => {
-    if (mapInstanceRef.current) {
-      exportLayerToGeoJSON(
-        layerKey,
-        mapInstanceRef.current,
-        `${layerKey}.geojson`,
-      );
-    } else {
-      alert("Map is currently loaded...");
+  // Download
+  const handleDownload = () => {
+    if (!mapInstanceRef.current) {
+      alert("Map is currently loading...");
+      return;
     }
+    selectedLayers.forEach((layerName) => {
+      const layer =
+        mapInstanceRef.current.layers[layerName];
+      if (!layer) {
+        console.error(
+          "Layer not found:",
+          layerName
+        );
+        return;
+      }
+      let geojson =
+        layer.toGeoJSON();
+
+      if (method !== "none") {
+        const algorithm =
+          algorithms[method];
+
+        geojson = {
+          ...geojson,
+
+          features:
+            geojson.features.map(
+              (feature)=>({
+
+                ...feature,
+
+                geometry:
+                  processGeometry(
+                    feature.geometry,
+                    algorithm,
+                    Number(parameter)
+                  )
+              })
+            )
+        };
+      }
+      exportLayerToGeoJSON(
+        layer,
+        mapInstanceRef.current,
+        `${layerName}_${method}.geojson`,
+        geojson
+      );
+    });
   };
 
+  // Load Geometries
   const handleGeoData = (ids) => {
     const uniqueIDs = ids.filter(
       (item, index, self) =>
@@ -129,9 +173,27 @@ export default function Chat() {
     loadGeometries(uniqueIDs, mapInstanceRef.current);
   };
 
+
   // pass selectedModel to useChat
   const { messages, input, setInput, sendMessage, isLoading, handleKeyDown } =
     useChat(apiKey, mapInstanceRef, handleGeoData, selectedModel);
+
+  // generalization
+  const [method, setMethod] = useState("none");
+  const [parameter, setParameter] = useState("");
+  const [selectedLayers, setSelectedLayers] = useState([
+    "cityLayer",
+    "districtLayer",
+    "adLayer",
+    "fsLayer"
+  ]);
+
+  const defaultParameters = {
+    douglas: 50,
+    visvalingam: 1000,
+    chaikin: 1
+  };
+    
 
   return (
     <>
@@ -311,58 +373,162 @@ export default function Chat() {
               <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">Germany</div>
 
-                <div className="dropdown">
+                <div className="d-flex gap-2">
+
                   <button
-                    className="btn btn-sm btn-outline-primary dropdown-toggle"
-                    type="button"
-                    id="downloadDropdown"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
+                    className="btn btn-sm btn-outline-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#generalizationModal"
                   >
-                    Download Data as GeoJSON
+                    Download & Generalization
                   </button>
-                  <ul
-                    className="dropdown-menu dropdown-menu-end download-dropdown"
-                    aria-labelledby="downloadDropdown"
-                  >
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handleDownload("cityLayer")}
-                      >
-                        Cities
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handleDownload("districtLayer")}
-                      >
-                        Districts
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handleDownload("adLayer")}
-                      >
-                        Admin Districts
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handleDownload("fsLayer")}
-                      >
-                        Federal States
-                      </button>
-                    </li>
-                  </ul>
                 </div>
               </div>
 
               <div className="panel-group">
                 <Map mapInstanceRef={mapInstanceRef} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="modal fade"
+        id="generalizationModal"
+        tabIndex="-1"
+        aria-labelledby="generalizationModalLabel"
+        aria-hidden="true"
+      >
+        <div className="modal-dialog">
+          <div className="modal-content">
+
+            <div className="modal-header">
+              <h5 className="modal-title" id="generalizationModalLabel">
+                Download & Generalization
+              </h5>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+              />
+            </div>
+
+            <div className="modal-body">
+
+              <div className="mb-3">
+
+                <h6>Layer</h6>
+
+                {[
+                  { value: "cityLayer", label: "Cities" },
+                  { value: "districtLayer", label: "Districts" },
+                  { value: "adLayer", label: "Admin Districts" },
+                  { value: "fsLayer", label: "Federal States" }
+                ].map((layer) => (
+                  <div className="form-check" key={layer.value}>
+
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id={layer.value}
+                      checked={selectedLayers.includes(layer.value)}
+                      onChange={(e) => {
+
+                        if (e.target.checked) {
+                          setSelectedLayers([
+                            ...selectedLayers,
+                            layer.value
+                          ]);
+                        } else {
+                          setSelectedLayers(
+                            selectedLayers.filter(
+                              (item) => item !== layer.value
+                            )
+                          );
+                        }
+
+                      }}
+                    />
+
+                    <label
+                      className="form-check-label"
+                      htmlFor={layer.value}
+                    >
+                      {layer.label}
+                    </label>
+
+                  </div>
+                ))}
+
+              </div>
+
+              <h6>Generalization</h6>
+                <select
+                    className="form-select"
+                    value={method}
+                    onChange={(e)=>{
+                      setMethod(e.target.value);
+                      setParameter(defaultParameters[e.target.value] ?? "");
+                    }}
+                >
+                    <option value="none">None</option>
+                    <option value="douglas">Douglas-Peucker</option>
+                    <option value="visvalingam">Visvalingam-Whyatt</option>
+                    <option value="chaikin">Chaikin</option>
+                </select>
+              
+              {method !== "none" && (
+                <div className="mt-3">
+                    <label className="form-label">
+                        {method === "douglas" && "Tolerance"}
+                        {method === "visvalingam" && "Area Threshold"}
+                        {method === "chaikin" && "Iterations"}
+                    </label>
+
+                    <input
+                      type="text"
+                      className="form-control"
+                      inputMode="numeric"
+                      value={parameter}
+                      onChange={(e) => {
+
+                        const value = e.target.value;
+
+                        if (method === "chaikin") {
+
+                          if (/^\d*$/.test(value)) {
+                            setParameter(value);
+                          }
+
+                        } else {
+
+                          if (/^\d*\.?\d*$/.test(value)) {
+                            setParameter(value);
+                          }
+
+                        }
+
+                      }}
+                    />
+                </div>
+              )}
+      
+              <div className="d-flex gap-2 mt-3"
+                style={{ justifyContent: "flex-end" }}>
+                <button
+                  className="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={handleDownload}
+                >
+                  Download
+                </button>
               </div>
             </div>
           </div>
