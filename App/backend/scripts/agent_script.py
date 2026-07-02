@@ -150,7 +150,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - If there are multiple entities, put the start entity first and then the target entity:
       - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
         because the query must check from Münster whether Bocholt lies western of it
-    - Do NOT include the type ("City", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
+    - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
   </constraints>
 </spatial_entities>
 
@@ -336,7 +336,9 @@ def extract_parameters_manually(question: str) -> ParameterExtraction:
             defaults["hierarchy"] = [[city, "City"]]
             defaults["spatial_relationship"] = "within"
             func_name = (parsed.get("name") or "").lower()
-            if "district" in func_name and "administrative" not in func_name:
+            if "community" in func_name:
+                defaults["target_type"] = "AdministrativeCommunity"
+            elif "district" in func_name and "administrative" not in func_name:
                 defaults["target_type"] = "District"
             elif "administrative" in func_name:
                 defaults["target_type"] = "AdministrativeDistrict"
@@ -479,8 +481,6 @@ def build_location_query(state):
     WITH start, score
     ORDER BY score DESC
 
-    LIMIT 10
-
     OPTIONAL MATCH (start)-[:hasFootprint]->(g:Geometry)
 
     OPTIONAL MATCH path =
@@ -518,23 +518,31 @@ def build_within_super_class(state):
     name = get_source_name(state)
 
     query = f"""
-        MATCH p = (start:{source} {{Name: '{name}'}})
+        MATCH p = (start:{source})
         -[]->
         (:Geometry)
         -[:within*]->
         (g:Geometry)    
         <-[:hasFootprint]-
-        ({target})
-        """
+        (:{target})
+        WHERE toLower(start.Name) CONTAINS toLower('{name}')
 
-    query += f"""
-        WITH start, nodes(p) AS ns
+        WITH start, p,
+        CASE
+            WHEN toLower(start.Name) = toLower('{name}') THEN 2
+            WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
+            ELSE 0
+        END AS score
+        WITH start, score, p
+        ORDER BY score DESC
+    
+        WITH start, score, nodes(p) AS ns
 
         UNWIND ns AS n
         MATCH (obj)-[:hasFootprint]->(n)
         WHERE NOT obj:Geometry
 
-        WITH start, collect(DISTINCT {{
+        WITH start, score, collect(DISTINCT {{
             id: obj.ID,
             name: obj.Name
         }}) AS targets
@@ -544,9 +552,10 @@ def build_within_super_class(state):
                 id: start.ID,
                 name: start.Name
             }},
+            score: score,
             target: targets
         }} AS result
-        """
+    """
     return {**state, "cypher_query": query}
 
 def build_within_sub_class(state):
@@ -554,11 +563,11 @@ def build_within_sub_class(state):
     target = state["target_type"]
     name = get_source_name(state)
 
-
     query = f"""
-        MATCH (start:{source} {{Name: '{name}'}})
+        MATCH (start:{source})
         -[:hasFootprint]->
         (sourceGeom:Geometry)
+        WHERE toLower(start.Name) CONTAINS toLower('{name}')
 
         MATCH (target:{target})
         -[:hasFootprint]->
@@ -566,7 +575,14 @@ def build_within_sub_class(state):
 
         MATCH (targetGeom)-[:within*]->(sourceGeom)
 
-        WITH start, collect(DISTINCT {{
+        WITH start, target,
+        CASE
+            WHEN toLower(start.Name) = toLower('{name}') THEN 2
+            WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
+            ELSE 0
+        END AS score
+
+        WITH start, score, collect(DISTINCT {{
             id: target.ID,
             name: target.Name
         }}) AS targets
@@ -576,6 +592,7 @@ def build_within_sub_class(state):
                 id: start.ID,
                 name: start.Name
             }},
+            score: score,
             target: targets
         }} AS result
         """
@@ -738,6 +755,7 @@ def execute_query(state):
 
 # resolve entity
 def resolve_entity(state):
+    # Printable JSON
     hierarchy = ", ".join(
         f"{item.entity_name} ({item.hierarchy})"
         for item in state["hierarchy"]
@@ -810,12 +828,17 @@ def verbalize(state):
 
         # Regular answer
         prompt = f"""
-        Turn the result into natural language based on the context of the question.
+        Turn the result into natural language based on the context of the question. 
+        Do not use any external knowledge, only the information provided in the result.
 
         Question: {state['question']}
         Result: {state['result']}
 
         Answer in this Language: {state['language']}
+
+        Describe all hierarchy levels of the result in the answer. 
+        The hierarchy levels are: City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState.
+
         If language is German, use the following translations for the hierarchy levels:
         - City -> Stadt
         - AdministrativeCommunity -> Verwaltungsgemeinde
@@ -827,6 +850,7 @@ def verbalize(state):
         - If the result is a number, it is a Distance in m. Round it to km
         - The first letter of the id states which hierarchy level the result has:
             - C = City
+            - V = Administrative Community
             - D = District
             - A = Administrative District
             - F = Federal State
@@ -983,7 +1007,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Where is Münster located?"
+    example_question = "In which district lies Emmerich?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-4o")
