@@ -16,9 +16,9 @@ export default function Navbar() {
         </Link>
 
         <Link className="navbar-brand" to="/">
-          QuA-GG
+          AGQA
         </Link>
-        <small className="text-white align-text-center">Question Answering about Germanies Geometries</small>
+        <small className="text-white align-text-center">Question Answering about Administrative Geometries</small>
 
         <button
           className="navbar-toggler"
@@ -39,26 +39,18 @@ export default function Navbar() {
           <ul className="navbar-nav ms-auto mb-2 mb-lg-0">
             
             <li className="nav-item">
-              <NavLink className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`} to="/" end>
-                Home
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`} to="/chat">
+              <NavLink className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`} to="/Chat" end>
                 Chat
               </NavLink>
             </li>
 
             <li className="nav-item">
-              <NavLink className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`} to="/info">
+              <NavLink className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`} to="/Info">
                 Info
               </NavLink>
             </li>
-
           </ul>
         </div>
-
       </div>
     </nav>
   );

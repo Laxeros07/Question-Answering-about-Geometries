@@ -1,5 +1,5 @@
 import Layout from "./components/Layout";
-import Home from "./pages/Home";
+import Home from "./pages/Impressum";
 import Info from "./pages/Info";
 import Chat from "./pages/Chat";
 import { Routes, Route } from "react-router-dom";

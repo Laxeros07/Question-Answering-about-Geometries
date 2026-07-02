@@ -6,10 +6,9 @@ export default function Footer() {
       <div className="container ms-2 me-2 px-2 mt-2 py-4 d-flex flex-column justify-content-center">
         <div className="row align-items-center">
           <div className="col-md-3 text-start">
-            <h5 className="text-uppercase">Links</h5>
             <ul className="list-unstyled mb-0">
               <li>
-                <Link className="text-white-50 text-decoration-none" to="/info">
+                <Link className="text-white-50 text-decoration-none" to="/">
                   Impressum
                 </Link>
               </li>
@@ -19,16 +18,7 @@ export default function Footer() {
           <div className="col-md-6 text-center">
             <small>
               This work was funded by the German Research Foundation (DFG project
-              no. 460036893 –{" "}
-              <a
-                href="https://www.nfdi4earth.de/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary text-decoration-none"
-              >
-                NFDI4Earth
-              </a>
-              ).
+              no. 460036893 – NFDI4Earth)
             </small>
           </div>
 
@@ -50,27 +40,9 @@ export default function Footer() {
               <a className="text-reset" href="https://github.com/Laxeros07/Question-Answering-about-Geometries">
                 <i className="bi bi-github" />
               </a>
-
-              <a
-                className="text-reset"
-                href="mailto:Apollo13.spacey@gmx.de?subject=Erreicht%20ueber%20Website&body=Sehr%20geehrtes%20Spacey%20Team,%0A%0A"
-              >
-                <i className="bi bi-envelope-at-fill"></i>
-              </a>
-
-              <a className="text-reset" href="tel:+4915901600951">
-                <i className="bi bi-phone"></i>
-              </a>
             </div>
           </div>
         </div>
-      </div>
-
-      <div
-        className="text-center p-1 text-white"
-        style={{ backgroundColor: "#009036" }}
-      >
-        © 2026 by: <i className="text-white">Shadowfax</i>
       </div>
     </footer>
   )}

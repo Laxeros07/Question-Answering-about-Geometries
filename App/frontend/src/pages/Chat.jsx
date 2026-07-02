@@ -225,7 +225,7 @@ export default function Chat() {
                     }}
                   />
                   <p className="fst-italic fw-light mt-2">
-                    Without key, QuA-GG won't work.
+                    Without key, AGQA won't work.
                   </p>
                   {isGwdgModel && (
                     <p className="small text-muted mt-2">
@@ -263,7 +263,7 @@ export default function Chat() {
           <div className="col-lg-7 col-xs-12 mb-3 d-flex">
             <div className="chat_window w-100">
               <div className="top_menu d-flex justify-content-between align-items-center">
-                <div className="title">ChatBot - Shadowfax</div>
+                <div className="title">Chat</div>
 
                 {/* LLM Selection Dropdown */}
                 <div className="d-flex gap-2 align-items-center">
@@ -369,7 +369,7 @@ export default function Chat() {
 
           {/* RIGHT SIDE - Map */}
           <div className="col-lg-5 col-xs-12 mb-3 d-flex">
-            <div className="chat_window w-100">
+            <div className="chat_window w-100 h-100">
               <div className="top_menu d-flex justify-content-between align-items-center">
                 <div className="title">Germany</div>
 
@@ -385,7 +385,7 @@ export default function Chat() {
                 </div>
               </div>
 
-              <div className="panel-group">
+              <div className="panel-group h-100">
                 <Map mapInstanceRef={mapInstanceRef} />
               </div>
             </div>
