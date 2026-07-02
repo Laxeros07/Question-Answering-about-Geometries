@@ -616,9 +616,7 @@ def build_touches_query(state):
     direction = state.get("cardinal_direction")
     direction_filter = f"{{Rel_Position: '{direction}'}}" if direction else ""
 
-    return {
-        **state,
-        "cypher_query": f"""
+    query = f"""
         MATCH 
         (start:{source} {{Name: '{name}'}})
         -[:hasFootprint]->(:Geometry)
@@ -629,15 +627,19 @@ def build_touches_query(state):
             id: neighbor.ID,
             name: neighbor.Name
         }}) AS target
-
         RETURN {{
             start: {{
                 id: start.ID,
                 name: start.Name
             }},
             target: target
+            {"rel_position:" + direction if direction else ""}
         }} AS result
         """
+
+    return {
+        **state,
+        "cypher_query": query
     }
 
 # relates
@@ -1027,7 +1029,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Does the district Hannover contains the city Seelze?"
+    example_question = "Does Lohmar lie directly north of Siegburg?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-4o")
