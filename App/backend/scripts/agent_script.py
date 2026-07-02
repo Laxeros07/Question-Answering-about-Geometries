@@ -150,6 +150,8 @@ instructions = """Analyze the input query and extract the following parameters.
     - If there are multiple entities, put the start entity first and then the target entity:
       - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
         because the query must check from Münster whether Bocholt lies western of it
+      - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
+      - e.g. "Does the district Hannover contains the city Seelze?" -> ["Hannover", "Seelze"]
     - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
   </constraints>
 </spatial_entities>
@@ -229,6 +231,13 @@ HIERARCHY = [
     "AdministrativeDistrict",
     "FederalState"
 ]
+HIERARCHY_SHORT = {
+    "City": "C",
+    "AdministrativeCommunity": "V",
+    "District": "D",
+    "AdministrativeDistrict": "A",
+    "FederalState": "F"
+}
 
 def get_llm_config(model_name, api_key):
     """Sets the base URL depending on the provider."""
@@ -507,7 +516,7 @@ def build_location_query(state):
     return {**state, "cypher_query": query}
 
 # Within
-def build_within_same_class(state):
+def build_within_same(state):
     # within_same does not exist, but the code sometimes goes there. To prevent this error, this function returns a Null query
     query = "RETURN null AS result LIMIT 0"
     return {**state, "cypher_query": query}
@@ -749,12 +758,23 @@ def execute_query(state):
 
     # When it is a decision question, only show the geometries mentioned in the question
     if state["decision_question"] == True:
-        result[0]["result"]["target"] = [item for item in result[0]["result"]["target"] if item["name"] in state["spatial_entities"]]
-
+        for r in cleaned:
+            target = []
+            for item in r["target"]:
+                for entity in state["hierarchy"]:
+                    if entity.entity_name in item["name"] and item["id"][0] == HIERARCHY_SHORT[entity.hierarchy]:
+                        target.append(item)
+            r["target"] = target
+     
     return {**state, "result": cleaned}
 
 # resolve entity
 def resolve_entity(state):
+
+    # If there is only one result, return it directly
+    if len(state["result"]) == 1:
+        return state
+    
     # Printable JSON
     hierarchy = ", ".join(
         f"{item.entity_name} ({item.hierarchy})"
@@ -899,7 +919,7 @@ workflow.add_node("interpret_query", interpret_query)
 workflow.add_node("add_inheritance", add_inheritance)
 
 workflow.add_node("build_location_query", build_location_query)
-workflow.add_node("build_within_same_class", build_within_same_class)
+workflow.add_node("build_within_same", build_within_same)
 workflow.add_node("build_within_super_class", build_within_super_class)
 workflow.add_node("build_within_sub_class", build_within_sub_class)
 workflow.add_node("build_touches_query", build_touches_query)
@@ -931,7 +951,7 @@ workflow.add_conditional_edges(
     select_query_type,
     {
         "location_action": "build_location_query",
-        "within_same_class": "build_within_same_class",
+        "within_same": "build_within_same",
         "within_super_class": "build_within_super_class",
         "within_sub_class": "build_within_sub_class",
         "touches_action": "build_touches_query",
@@ -952,7 +972,7 @@ workflow.add_conditional_edges(
 )
 
 workflow.add_edge("build_location_query", "execute_query")
-workflow.add_edge("build_within_same_class", "execute_query")
+workflow.add_edge("build_within_same", "execute_query")
 workflow.add_edge("build_within_super_class", "execute_query")
 workflow.add_edge("build_within_sub_class", "execute_query")
 workflow.add_edge("build_touches_query", "execute_query")
@@ -1007,7 +1027,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "In which district lies Emmerich?"
+    example_question = "Does the district Hannover contains the city Seelze?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-4o")
