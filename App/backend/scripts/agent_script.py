@@ -632,8 +632,8 @@ def build_touches_query(state):
                 id: start.ID,
                 name: start.Name
             }},
-            target: target,
-            {"rel_position: '" + direction + "'" if direction else ""}
+            target: target
+            {", rel_position: '" + direction + "'" if direction else ""}
         }} AS result
         """
 
@@ -1029,7 +1029,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Does Lohmar lie directly north of Siegburg?"
+    example_question = "Do the districts of Münster and Coesfeld touch each other?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-4o")
