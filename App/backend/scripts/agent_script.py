@@ -632,8 +632,8 @@ def build_touches_query(state):
                 id: start.ID,
                 name: start.Name
             }},
-            target: target
-            {"rel_position:" + direction if direction else ""}
+            target: target,
+            {"rel_position: '" + direction + "'" if direction else ""}
         }} AS result
         """
 
