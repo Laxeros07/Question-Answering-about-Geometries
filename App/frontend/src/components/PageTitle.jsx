@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 export default function PageTitle({ title }) {
   return (
     <Helmet>
-      <title>{"QuA-GG" + title}</title>
+      <title>{"AGQA"}</title>
 
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -15,8 +15,8 @@ export default function useChat(
         <>
           Hello there! Ask me some questions about the geometry of Germany. If
           you are not familiar with the federal system of Germany, we recommend
-          to read the short introduction on our <Link to="/">homepage</Link>.
-          Where You can also find some sample questions.
+          to read the short introduction on our <Link to="/Info">Infopage</Link>
+          . Where You can also find some sample questions.
         </>
       ),
       side: "left",
