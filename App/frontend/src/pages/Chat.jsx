@@ -75,6 +75,16 @@ export default function Chat() {
     }
   };
 
+  // check for API Key
+  const handleSend = () => {
+    if (!apiKey?.trim()) {
+      setShowModal(true);
+      return;
+    }
+
+    sendMessage();
+  };
+
   /** 
   // load SAIA-Models dynamically, when API-Key is there
   useEffect(() => {
@@ -360,7 +370,7 @@ export default function Chat() {
                   onKeyDown={handleKeyDown}
                   placeholder="In which District lies..."
                 />
-                <div className="app_button_1" onClick={sendMessage}>
+                <div className="app_button_1" onClick={handleSend}>
                   Send
                 </div>
               </div>
