@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="col-md-3 text-start">
             <ul className="list-unstyled mb-0">
               <li>
-                <Link className="text-white-50 text-decoration-none" to="/">
+                <Link className="text-white-50 text-decoration-none" to="/Impressum">
                   Impressum
                 </Link>
               </li>
