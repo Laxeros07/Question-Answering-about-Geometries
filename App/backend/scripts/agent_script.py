@@ -222,6 +222,7 @@ class AgentState(TypedDict):
     # OUTPUT
     cypher_query: str
     result: str
+    reasoning: str
 
 # Hierarchy
 HIERARCHY = [
@@ -618,12 +619,21 @@ def build_touches_query(state):
 
     query = f"""
         MATCH 
-        (start:{source} {{Name: '{name}'}})
+        (start:{source})
         -[:hasFootprint]->(:Geometry)
         -[:touches {direction_filter}]->(:Geometry)
         <-[:hasFootprint]-(neighbor:{source})
 
-        WITH start, collect(DISTINCT {{
+        WHERE toLower(start.Name) CONTAINS toLower('{name}')
+
+        WITH start, neighbor,
+        CASE
+            WHEN toLower(start.Name) = toLower('{name}') THEN 2
+            WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
+            ELSE 0
+        END AS score
+
+        WITH start, score, collect(DISTINCT {{
             id: neighbor.ID,
             name: neighbor.Name
         }}) AS target
@@ -632,6 +642,7 @@ def build_touches_query(state):
                 id: start.ID,
                 name: start.Name
             }},
+            score: score,
             target: target
             {", rel_position: '" + direction + "'" if direction else ""}
         }} AS result
@@ -787,29 +798,33 @@ def resolve_entity(state):
 
     IMPORTANT:
     You do NOT perform semantic reasoning or guessing.
-    You ONLY select based on the provided score.
+    You select the result based on the provided score and the context of the question.
 
     Each result has a "priority score":
-    - score 2 = exact match (BEST)
+    - score 2 = exact match
     - score 1 = match starts with the entity name
     - score 0 = match only contains entity name
 
     RULES:
-    1. Always prefer higher score values.
-    2. NEVER select a lower score if a higher score exists.
-    3. If multiple entities have the same highest score, you may return multiple indices.
-    4. Do NOT use substring reasoning or external knowledge.
-    5. Do NOT assume that similar names are related.
+    1. Prefer higher score values.
+    2. If multiple entities have the same highest score, you may return multiple indices.
+    3. Do NOT use substring reasoning or external knowledge.
+    4. Do NOT assume that similar names are related.
 
     Examples:
     - "Münster" is NOT "Neumünster"
     - Only choose entities explicitly matching the query or best scored candidates
 
     OUTPUT FORMAT:
+    {{
+        "reasoning": "Explain your reasoning for the selection in plain text",
+        "indices": [0, 2]
+    }}
     - Use the result list
     - Return a single index in a list if one best match exists
     - Return a list of indices if multiple candidates share the best score
     - Return ONLY indices (no explanation, no text, no markdown syntax)
+    - As the first element of the list, say your reasoning for the selection in plain text, then return the list of indices
 
     Question:
     {state["question"]}
@@ -824,8 +839,10 @@ def resolve_entity(state):
     {hierarchy}
     """
     indices = llm.invoke(prompt).content
-    indices = json.loads(indices)
-    state["result"] = [state["result"][i] for i in indices]
+    res = json.loads(indices)
+    # Only save the chosen results based on the indices returned by the LLM
+    state["result"] = [state["result"][i] for i in res["indices"]]
+    state["reasoning"] = res["reasoning"]
 
     return state
 
@@ -1029,10 +1046,10 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Do the districts of Münster and Coesfeld touch each other?"
+    example_question = "Which cities lie next to Münster in the federal state of Bayern?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
-        result = run_question(example_question, example_api_key, "gpt-4o")
+        result = run_question(example_question, example_api_key, "gpt-5.4-nano")
 
         fancy_print(result)
     else:
