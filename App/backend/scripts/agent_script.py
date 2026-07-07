@@ -120,6 +120,23 @@ instructions = """Analyze the input query and extract the following parameters.
   </constraints>
 </radius>
 
+<spatial_entities>
+  <task>Return a list of entity names mentioned in the question.</task>
+  <constraints>
+    - A entity name is a proper name of a place in Germany
+    - It can be written in another language
+    - If the name is in a different language than German, translate the name to German
+      - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+    - If there are multiple entities, put the start entity first and then the target entity:
+      - e.g. "Is Münster located northeast of Düsseldorf?" -> ["Düsseldorf", "Münster"]
+      - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
+        because the query must check from Münster whether Bocholt lies western of it
+      - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
+      - e.g. "Does the district Hannover contains the city Seelze?" -> ["Hannover", "Seelze"]
+    - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
+  </constraints>
+</spatial_entities>
+
 <hierarchy>
 <task>assign the entities to one of the following hierarchies:</task>
   <constraints>
@@ -140,23 +157,6 @@ instructions = """Analyze the input query and extract the following parameters.
         - Bundesland -> FederalState
   </constraints>
 </hierarchy>
-
-<spatial_entities>
-  <task>Return a list of entity names mentioned in the question.</task>
-  <constraints>
-    - A entity name is a proper name of a place in Germany
-    - It can be written in another language
-    - If the name is in a different language than German, translate the name to German
-      - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
-    - If there are multiple entities, put the start entity first and then the target entity:
-      - e.g. "Is Münster located northeast of Düsseldorf?" -> ["Düsseldorf", "Münster"]
-      - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
-        because the query must check from Münster whether Bocholt lies western of it
-      - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
-      - e.g. "Does the district Hannover contains the city Seelze?" -> ["Hannover", "Seelze"]
-    - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
-  </constraints>
-</spatial_entities>
 
 <target_type>
   <task>Return the type of the target entity in the question.</task>
@@ -224,6 +224,7 @@ class AgentState(TypedDict):
     # OUTPUT
     cypher_query: str
     result: str
+    reasoning: str
 
 # Hierarchy
 HIERARCHY = [
@@ -618,14 +619,39 @@ def build_touches_query(state):
     direction = state.get("cardinal_direction")
     direction_filter = f"{{Rel_Position: '{direction}'}}" if direction else ""
 
+    within_query = ""
+
+    # Trying to determine whether the user asked for a higher level
+    if len(state["spatial_entities"]) > 1 and state["decision_question"] == False:
+        if state["hierarchy"][0].hierarchy != state["hierarchy"][1].hierarchy:
+            within_query = f"""
+                MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+                MATCH path =
+                    (start)-[:hasFootprint]->(:Geometry)
+                    -[:within*1..]->(:Geometry)
+                    <-[:hasFootprint]-(:{state["hierarchy"][1].hierarchy} {{Name: '{state["hierarchy"][1].entity_name}'}})
+            """
+
     query = f"""
         MATCH 
-        (start:{source} {{Name: '{name}'}})
+        (start:{source})
         -[:hasFootprint]->(:Geometry)
         -[:touches {direction_filter}]->(:Geometry)
         <-[:hasFootprint]-(neighbor:{source})
 
-        WITH start, collect(DISTINCT {{
+        WHERE toLower(start.Name) CONTAINS toLower('{name}')
+
+        WITH start, neighbor,
+        CASE
+            WHEN toLower(start.Name) = toLower('{name}') THEN 2
+            WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
+            ELSE 0
+        END AS score
+
+        {within_query}
+
+        WITH start, score, collect(DISTINCT {{
             id: neighbor.ID,
             name: neighbor.Name
         }}) AS target
@@ -634,6 +660,7 @@ def build_touches_query(state):
                 id: start.ID,
                 name: start.Name
             }},
+            score: score,
             target: target
             {", rel_position: '" + direction + "'" if direction else ""}
         }} AS result
@@ -789,29 +816,33 @@ def resolve_entity(state):
 
     IMPORTANT:
     You do NOT perform semantic reasoning or guessing.
-    You ONLY select based on the provided score.
+    You select the result based on the provided score and the context of the question.
 
     Each result has a "priority score":
-    - score 2 = exact match (BEST)
+    - score 2 = exact match
     - score 1 = match starts with the entity name
     - score 0 = match only contains entity name
 
     RULES:
-    1. Always prefer higher score values.
-    2. NEVER select a lower score if a higher score exists.
-    3. If multiple entities have the same highest score, you may return multiple indices.
-    4. Do NOT use substring reasoning or external knowledge.
-    5. Do NOT assume that similar names are related.
+    1. Prefer higher score values.
+    2. If multiple entities have the same highest score, you may return multiple indices.
+    3. Do NOT use substring reasoning or external knowledge.
+    4. Do NOT assume that similar names are related.
 
     Examples:
     - "Münster" is NOT "Neumünster"
     - Only choose entities explicitly matching the query or best scored candidates
 
     OUTPUT FORMAT:
+    {{
+        "reasoning": "Explain your reasoning for the selection in plain text",
+        "indices": [0, 2]
+    }}
     - Use the result list
     - Return a single index in a list if one best match exists
     - Return a list of indices if multiple candidates share the best score
     - Return ONLY indices (no explanation, no text, no markdown syntax)
+    - As the first element of the list, say your reasoning for the selection in plain text, then return the list of indices
 
     Question:
     {state["question"]}
@@ -826,8 +857,10 @@ def resolve_entity(state):
     {hierarchy}
     """
     indices = llm.invoke(prompt).content
-    indices = json.loads(indices)
-    state["result"] = [state["result"][i] for i in indices]
+    res = json.loads(indices)
+    # Only save the chosen results based on the indices returned by the LLM
+    state["result"] = [state["result"][i] for i in res["indices"]]
+    state["reasoning"] = res["reasoning"]
 
     return state
 
@@ -1037,10 +1070,10 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities are in a radius of 5km from Münster?"
+    example_question = "What cities lie next to Münster in Bayern?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
-        result = run_question(example_question, example_api_key, "gpt-4-turbo")
+        result = run_question(example_question, example_api_key, "gpt-5.4-nano")
 
         fancy_print(result)
     else:
