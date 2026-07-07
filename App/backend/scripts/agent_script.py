@@ -119,6 +119,22 @@ instructions = """Analyze the input query and extract the following parameters.
   </constraints>
 </radius>
 
+<spatial_entities>
+  <task>Return a list of entity names mentioned in the question.</task>
+  <constraints>
+    - A entity name is a proper name of a place in Germany
+    - It can be written in another language
+    - If the name is in a different language than German, translate the name to German
+      - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+    - If there are multiple entities, put the start entity first and then the target entity:
+      - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
+        because the query must check from Münster whether Bocholt lies western of it
+      - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
+      - e.g. "Does the district Hannover contains the city Seelze?" -> ["Hannover", "Seelze"]
+    - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
+  </constraints>
+</spatial_entities>
+
 <hierarchy>
 <task>assign the entities to one of the following hierarchies:</task>
   <constraints>
@@ -139,22 +155,6 @@ instructions = """Analyze the input query and extract the following parameters.
         - Bundesland -> FederalState
   </constraints>
 </hierarchy>
-
-<spatial_entities>
-  <task>Return a list of entity names mentioned in the question.</task>
-  <constraints>
-    - A entity name is a proper name of a place in Germany
-    - It can be written in another language
-    - If the name is in a different language than German, translate the name to German
-      - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
-    - If there are multiple entities, put the start entity first and then the target entity:
-      - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
-        because the query must check from Münster whether Bocholt lies western of it
-      - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
-      - e.g. "Does the district Hannover contains the city Seelze?" -> ["Hannover", "Seelze"]
-    - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
-  </constraints>
-</spatial_entities>
 
 <target_type>
   <task>Return the type of the target entity in the question.</task>
@@ -617,6 +617,20 @@ def build_touches_query(state):
     direction = state.get("cardinal_direction")
     direction_filter = f"{{Rel_Position: '{direction}'}}" if direction else ""
 
+    within_query = ""
+
+    # Trying to determine whether the user asked for a higher level
+    if len(state["spatial_entities"]) > 1 and state["decision_question"] == False:
+        if state["hierarchy"][0].hierarchy != state["hierarchy"][1].hierarchy:
+            within_query = f"""
+                MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+                MATCH path =
+                    (start)-[:hasFootprint]->(:Geometry)
+                    -[:within*1..]->(:Geometry)
+                    <-[:hasFootprint]-(:{state["hierarchy"][1].hierarchy} {{Name: '{state["hierarchy"][1].entity_name}'}})
+            """
+
     query = f"""
         MATCH 
         (start:{source})
@@ -632,6 +646,8 @@ def build_touches_query(state):
             WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
             ELSE 0
         END AS score
+
+        {within_query}
 
         WITH start, score, collect(DISTINCT {{
             id: neighbor.ID,
@@ -1046,7 +1062,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie next to Münster in the federal state of Bayern?"
+    example_question = "What cities lie next to Münster in Bayern?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
