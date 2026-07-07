@@ -73,9 +73,9 @@ instructions = """Analyze the input query and extract the following parameters.
   <constraints>
     - The relationship can only be one of the following:
       - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
-      - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance constraint is mentioned
+      - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance/radius constraint is mentioned
       - "touches": geographic neighbors (lies next to, is next to, touches, located directly, directly next to) can include (north, south, east, west)
-      - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west)
+      - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west) or radius
       - "None": if none of the above apply
   </constraints>
 </relationship>
@@ -116,6 +116,7 @@ instructions = """Analyze the input query and extract the following parameters.
   <task>return TRUE only if the question explicitly states a radius or distance constraint without comparing two entities</task>
   <constraints>
     - relevant keywords for TRUE: "within a radius of X km/m", "in a radius of X km/m", "within X km/m distance", "in X km/m distance", "X km/m from", "X km/m around", "X km/m near", "X km/m close to"
+    - the rlationship has to be "relates"
   </constraints>
 </radius>
 
@@ -148,6 +149,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - If the name is in a different language than German, translate the name to German
       - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
     - If there are multiple entities, put the start entity first and then the target entity:
+      - e.g. "Is Münster located northeast of Düsseldorf?" -> ["Düsseldorf", "Münster"]
       - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
         because the query must check from Münster whether Bocholt lies western of it
       - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
@@ -869,7 +871,7 @@ def verbalize(state):
         - FederalState -> Bundesland
 
         Rules:
-        - If the result is a number, it is a Distance in m. Round it to km
+        - If the result includes distance (float), it is a Distance in km. 
         - The first letter of the id states which hierarchy level the result has:
             - C = City
             - V = Administrative Community
@@ -877,6 +879,11 @@ def verbalize(state):
             - A = Administrative District
             - F = Federal State
         include the level in the answer but NOT the id
+
+        - If it is a true-false-question:
+            - If the result is empty: the answer is no
+            - If the result includes some entities: the answer is yes
+            - rephrase the question as answer
 
         - If the result includes more than one startpoint. The entity in question is not unique
           and refers to more than one place.
@@ -886,6 +893,7 @@ def verbalize(state):
         - The Result is never a question
         - Put only the result in the Answer NEVER the question
         - Do not use Markdown or code formatting in the answer, just plain text
+        - Do not use the terms "start", "target", "result" in the answer
         """
     if state['result'] is None or state['result'] == "Not valid" or (isinstance(state['result'], list) and len(state['result']) == 0):
         return {
@@ -1029,10 +1037,10 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Do the districts of Münster and Coesfeld touch each other?"
+    example_question = "Which cities are in a radius of 5km from Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
-        result = run_question(example_question, example_api_key, "gpt-4o")
+        result = run_question(example_question, example_api_key, "gpt-4-turbo")
 
         fancy_print(result)
     else:
