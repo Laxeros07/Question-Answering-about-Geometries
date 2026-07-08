@@ -75,7 +75,7 @@ instructions = """Analyze the input query and extract the following parameters.
       - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
       - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance/radius constraint is mentioned
       - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to, closest, is closest) can include (north, south, east, west)
-      - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west) or radius
+      - "relates": generic relation, cardinal direction or distance (how far, north/south/east/west (without "next to")) or radius
       - "None": if none of the above apply
   </constraints>
 </relationship>
@@ -623,7 +623,12 @@ def build_touches_query(state):
 
     # Trying to determine whether the user asked for a higher level
     if len(state["spatial_entities"]) > 1 and state["decision_question"] == False:
-        if state["hierarchy"][0].hierarchy != state["hierarchy"][1].hierarchy:
+        test_if_other_hierarchy = False
+        for entity in state["hierarchy"]:
+            if entity.hierarchy != source:
+                test_if_other_hierarchy = True
+                break
+        if test_if_other_hierarchy:
             within_query = f"""
                 MATCH (start)-[:hasFootprint]->(g:Geometry)
 
@@ -811,6 +816,14 @@ def resolve_entity(state):
         f"{item.entity_name} ({item.hierarchy})"
         for item in state["hierarchy"]
     )
+
+    results = []
+    for i, r in enumerate(state["result"]):
+        results.append({
+            "index": i,
+            **r
+        })
+
     prompt = f"""
     You are a selection system for entity disambiguation.
 
@@ -841,8 +854,10 @@ def resolve_entity(state):
     - Use the result list
     - Return a single index in a list if one best match exists
     - Return a list of indices if multiple candidates share the best score
-    - Return ONLY indices (no explanation, no text, no markdown syntax)
-    - As the first element of the list, say your reasoning for the selection in plain text, then return the list of indices
+    - Each result contains a field "index".
+    - Do NOT count the list yourself.
+    - Copy the value of the "index" field exactly as it appears.
+    - Never infer or renumber indices.
 
     Question:
     {state["question"]}
@@ -851,7 +866,7 @@ def resolve_entity(state):
     {state["spatial_entities"]}
 
     Results (sorted by score descending):
-    {state["result"]}
+    {results}
 
     Hierarchies:
     {hierarchy}
