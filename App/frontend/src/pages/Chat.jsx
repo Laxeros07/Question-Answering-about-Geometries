@@ -14,7 +14,7 @@ import { algorithms } from "../algorithms";
 // Fallback models in case the API is unavailable
 const SAIA_MODELS = [
   { id: "gemma-4-31b-it", name: "gemma-4-31b-it" },
-  //{ id: "qwen3.5-397b-a17b", name: "qwen3.5-397b-a17b" },
+  { id: "qwen3.6-27b", name: "qwen3.6-27b" },
   { id: "qwen3-30b-a3b-instruct-2507", name: "qwen3-30b-a3b-instruct-2507" },
   { id: "glm-4.7", name: "glm-4.7" },
   { id: "meta-llama-3.1-8b-instruct", name: "meta-llama-3.1-8b-instruct" },
@@ -37,7 +37,7 @@ const ALL_MODEL_IDS = [
   ...SAIA_MODELS.map((m) => m.id),
 ];
 
-const DEFAULT_MODEL = "gpt-5-nano";
+const DEFAULT_MODEL = "gpt-5.4-nano";
 
 export default function Chat() {
   const mapInstanceRef = useRef(null);

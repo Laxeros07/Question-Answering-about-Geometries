@@ -66,7 +66,7 @@ def calculate_distances(neo_result):
     # only works for two entities
     distance = polygons.loc[0]["geometry"].distance(polygons.loc[1]["geometry"])
 
-    neo_result[0]["distance"] = distance
+    neo_result[0]["distance"] = round((distance/1000), 2)
     return neo_result
 
 # calculate_radius
