@@ -74,8 +74,8 @@ instructions = """Analyze the input query and extract the following parameters.
     - The relationship can only be one of the following:
       - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
       - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance/radius constraint is mentioned
-      - "touches": geographic neighbors (next to, is next to, touches, located directly, directly next to) can include (north, south, east, west), but a cardinal direction alone NEVER implies "touches"
-      - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without next to)) or radius
+      - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to) can include (north, south, east, west)
+      - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without "next to")) or radius
       - "None": if none of the above apply
   </constraints>
 </relationship>
