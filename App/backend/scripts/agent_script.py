@@ -74,8 +74,8 @@ instructions = """Analyze the input query and extract the following parameters.
     - The relationship can only be one of the following:
       - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
       - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance/radius constraint is mentioned
-      - "touches": geographic neighbors (lies next to, is next to, touches, located directly, directly next to) can include (north, south, east, west)
-      - "relates": generic relation, cardinal direction or distance (how far, north/south/east/westn lies (without next to)) or radius
+      - "touches": geographic neighbors (next to, is next to, touches, located directly, directly next to) can include (north, south, east, west), but a cardinal direction alone NEVER implies "touches"
+      - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without next to)) or radius
       - "None": if none of the above apply
   </constraints>
 </relationship>
@@ -703,16 +703,130 @@ def build_direction_query(state):
     name = get_source_name(state)
     source = get_source_type(state)
 
-    # First get the ID of the source entity
-    get_id_query = f"""
-    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
-    """
-    records = graph.query(get_id_query)
+    if state["decision_question"] == True:
+        e1 = state["spatial_entities"][0]
+        e2 = state["spatial_entities"][1]
+        query = f"""
+            MATCH
+                (n1:{source}),
+                (n2:{source})
+            WHERE
+                toLower(n1.Name) CONTAINS toLower("{e1}")
+                AND toLower(n2.Name) CONTAINS toLower("{e2}")
+
+            WITH
+                n1,
+                n2,
+                CASE
+                    WHEN toLower(n1.Name) = toLower("{e1}") THEN 2
+                    WHEN toLower(n1.Name) STARTS WITH toLower("{e1}") THEN 1
+                    ELSE 0
+                END AS score1,
+                CASE
+                    WHEN toLower(n2.Name) = toLower("{e2}") THEN 2
+                    WHEN toLower(n2.Name) STARTS WITH toLower("{e2}") THEN 1
+                    ELSE 0
+                END AS score2
+
+            RETURN {{
+                start: {{
+                    id: n1.ID,
+                    name: n1.Name,
+                    score: score1,
+                    centroid: n1.Centroid
+                }},
+                target: [{{
+                    id: n2.ID,
+                    name: n2.Name,
+                    score: score2,
+                    centroid: n2.Centroid
+                }}]
+            }} AS result
+            ORDER BY score1 + score2 DESC
+            """
+    else:
+        # First get the ID of the source entity
+        query = f"""
+        MATCH (start:{source})
+        WHERE toLower(start.Name) CONTAINS toLower("{name}")
+
+        WITH start,
+            CASE
+                WHEN toLower(start.Name) = toLower("{name}") THEN 2
+                WHEN toLower(start.Name) STARTS WITH toLower("{name}") THEN 1
+                ELSE 0
+            END AS score
+
+        WITH start, score
+        ORDER BY score DESC
+
+        OPTIONAL MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+        OPTIONAL MATCH path =
+            (start)-[:hasFootprint]->(:Geometry)
+            -[:within*1..]->(:Geometry)
+            <-[:hasFootprint]-(parent)
+
+        WITH start, g, score,
+            collect(DISTINCT {{
+                id: parent.ID,
+                name: parent.Name
+            }}) AS target
+
+        RETURN {{
+            start: {{
+                id: start.ID,
+                name: start.Name,
+                centroid: start.Centroid
+            }},
+            score: score,
+            target: target
+        }} AS result
+        """
+    records = graph.query(query)
     if not records or len(records) == 0:
         return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
     
-    # Now calculate the cardinal direction query using the retrieved ID
-    query = srf.calculate_cardinal_direction(records[0]["ID"], name, state["target_type"], direction)
+    # Run the prompt which chooses the best result if multiple candidates are returned
+    if len(records) > 1:
+        state["result"] = records
+        state = resolve_entity(state)
+        records = state["result"]
+
+    if state["decision_question"] == True:
+        # When it is a decision question, srf.calculate_cardinal_direction() does not need to be called
+        # Compare only chosen entities
+        compare_direction = srf.get_cardinal_direction(
+            tuple(map(float, records[0]["result"]["start"]["centroid"][7:-1].split())), 
+            tuple(map(float, records[0]["result"]["target"][0]["centroid"][7:-1].split()))
+        )
+
+        query = f"""
+                MATCH (start:{source} {{ID: '{records[0]["result"]["start"]["id"]}'}})
+                MATCH (target:{source} {{ID: '{records[0]["result"]["target"][0]["id"]}'}})
+
+                RETURN {{
+                    start: {{
+                        id: start.ID,
+                        name: start.Name
+                    }},
+                    target: [{{
+                        id: target.ID,
+                        name: target.Name
+                    }}],
+                    direction: '{compare_direction}'
+                }} AS result
+                """
+
+    else:
+        # Now calculate the cardinal direction query using the retrieved ID
+        # If there are multiple candidates, choose the first one
+        query = srf.calculate_cardinal_direction(
+            records[0]["result"]["start"]["id"], 
+            records[0]["result"]["start"]["name"], 
+            state["target_type"], 
+            direction
+        )
 
     return {**state, "cypher_query": query}
 
@@ -928,9 +1042,13 @@ def verbalize(state):
             - F = Federal State
         include the level in the answer but NOT the id
 
-        - If it is a true-false-question:
+        - If it is a decision-question:
+            - Use the provided result to first answer with "yes" or "no"
+            - Then say the reasoning for the answer based on the result
+            Further information:
             - If the result is empty: the answer is no
-            - If the result includes some entities: the answer is yes
+            - Length of target: {len(state["result"][0]["target"]) if len(state["result"]) != 0 else 0}
+                - If length of targets > 0 = True: the answer is yes, else the answer is no
             - rephrase the question as answer
 
         - If the result includes more than one startpoint. The entity in question is not unique
@@ -1085,7 +1203,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What cities lie next to Münster in Bayern?"
+    example_question = "Does Bocholt lie eastern of Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
