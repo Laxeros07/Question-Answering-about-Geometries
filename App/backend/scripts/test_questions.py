@@ -201,8 +201,8 @@ TEST_QUESTIONS = [
 ]
 
 MODELS = [
-    #"gpt-5.4-mini",
-    "gpt-5.4-nano"#,
+    "gpt-5.4-mini",
+    #"gpt-5.4-nano"#,
     #"gpt-4o"
 ]
 
@@ -259,7 +259,7 @@ def benchmark():
 
     df = pd.DataFrame(rows)
 
-    output_file = "qa_benchmark_results.xlsx"
+    output_file = "qa_benchmark_results_mini.xlsx"
 
     df.to_excel(output_file, index=False)
 
