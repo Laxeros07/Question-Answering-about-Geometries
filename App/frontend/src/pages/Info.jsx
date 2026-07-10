@@ -43,7 +43,7 @@ export default function Home() {
             <li>Which cities are located in the administrative district of Münster?</li>
             <li>In which federal state is Hameln located?</li>
             <li>Which cities border Hannover?</li>
-            <li>Which districts are located north of Rhein-Sieg-Kreis?</li>
+            <li>Which districts are located north of the district Rhein-Sieg-Kreis?</li>
             <li>Which cities are located within a 100 km radius of Bocholt?</li>
           </ul>
 
