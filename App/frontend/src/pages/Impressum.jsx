@@ -45,9 +45,9 @@ export default function Info() {
             Telefon:
             <a
               className="link1 text-muted text-decoration-none"
-              href="tel:+491633422862"
+              href="tel:+49123456789"
             >
-              +49 163 342 2862
+              +49 123 456789
             </a>
             <br />
             E-Mail:
