@@ -61,8 +61,7 @@ export default function Home() {
       >
         <div className="card-body">
           <p className="blockquote m-0">
-            “Even planks in front of your head ideally leave room for a clear
-            view!”
+            “<b>AGQA</b> - <b>Q</b>uestion <b>A</b>nswering about <b>A</b>dministraitive <b>G</b>eometries”
           </p>
         </div>
       </div>
