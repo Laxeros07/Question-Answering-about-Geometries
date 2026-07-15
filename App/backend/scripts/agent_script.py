@@ -77,6 +77,8 @@ instructions = """Analyze the input query and extract the following parameters.
       - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to) can include (north, south, east, west)
       - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without "next to")) or radius
       - "None": if none of the above apply
+      Example "touches": Which cities lie directly northern of Münster?
+      Example "relates": Which cities lie northern of Münster?
   </constraints>
 </relationship>
 
@@ -133,6 +135,7 @@ instructions = """Analyze the input query and extract the following parameters.
         because the query must check from Münster whether Bocholt lies western of it
       - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
       - e.g. "Does the district Hannover contains the city Seelze?" -> ["Hannover", "Seelze"]
+      - e.g. "Does Münster in Bayern lie northern of Augsburg?" -> ["Augsburg", "Münster", "Bayern"]
     - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
   </constraints>
 </spatial_entities>
@@ -704,8 +707,24 @@ def build_direction_query(state):
     source = get_source_type(state)
 
     if state["decision_question"] == True:
+        # Only use entities that are mentioned in the question
         e1 = state["spatial_entities"][0]
         e2 = state["spatial_entities"][1]
+
+        # Find out whether the user asked for a higher hierarchy than the source entity
+        # other_hierarchy = ""
+        # for entity in state["hierarchy"]:
+        #     if entity.hierarchy == state["target_type"]:
+        #         other_hierarchy = f"""
+        #             MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+        #             MATCH path =
+        #                 (start)-[:hasFootprint]->(:Geometry)
+        #                 -[:within*1..]->(:Geometry)
+        #                 <-[:hasFootprint]-(:{entity.hierarchy} {{Name: '{entity.entity_name}'}})
+        #         """
+        #         break
+
         query = f"""
             MATCH
                 (n1:{source}),
@@ -1203,7 +1222,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Does Bocholt lie eastern of Münster?"
+    example_question = "Does Münster (Bayern) lie southern of Münster (Nordrhein Westfalen)?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
