@@ -694,7 +694,7 @@ def select_relates_type(state):
     if state["distance_between"] == True:
         return "distance_between"
     
-    if state["radius"] == True or state["distance_constraint"] is not None and state.get("cardinal_direction"):
+    if (state["radius"] == True or state["distance_constraint"] is not None) and state.get("cardinal_direction"):
         return "radius_and_direction"
 
     if state["radius"] == True:
@@ -866,14 +866,59 @@ def build_radius_query(state):
 
     # First get the ID of the source entity
     get_id_query = f"""
-    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
-    """
+        MATCH (start:{source})
+        WHERE toLower(start.Name) CONTAINS toLower("{name}")
+
+        WITH start,
+            CASE
+                WHEN toLower(start.Name) = toLower("{name}") THEN 2
+                WHEN toLower(start.Name) STARTS WITH toLower("{name}") THEN 1
+                ELSE 0
+            END AS score
+
+        WITH start, score
+        ORDER BY score DESC
+
+        OPTIONAL MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+        OPTIONAL MATCH path =
+            (start)-[:hasFootprint]->(:Geometry)
+            -[:within*1..]->(:Geometry)
+            <-[:hasFootprint]-(parent)
+
+        WITH start, g, score,
+            collect(DISTINCT {{
+                id: parent.ID,
+                name: parent.Name
+            }}) AS target
+
+        RETURN {{
+            start: {{
+                id: start.ID,
+                name: start.Name,
+                centroid: start.Centroid
+            }},
+            score: score,
+            target: target
+        }} AS result
+        """
     records = graph.query(get_id_query)
     if not records or len(records) == 0:
         return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+
+    # Run the prompt which chooses the best result if multiple candidates are returned
+    if len(records) > 1:
+        state["result"] = records
+        state = resolve_entity(state)
+        records = state["result"]
     
     # Now calculate the radius query using the retrieved ID
-    query = srf.calculate_radius(records[0]["ID"], name, state["target_type"], distance)
+    query = srf.calculate_radius(
+        records[0]["result"]["start"]["id"], 
+        name, 
+        state["target_type"], 
+        distance
+    )
 
     return {**state, "cypher_query": query}
 
@@ -984,6 +1029,8 @@ def resolve_entity(state):
     2. If multiple entities have the same highest score, you may return multiple indices.
     3. Do NOT use substring reasoning or external knowledge.
     4. Do NOT assume that similar names are related.
+    5. If the user limits the question to a specific hierarchy level, use the information provided in the targets to decide.
+        e.g. "Where is Münster in Nordrhein-Westfalen located?" -> results where the target holds Nordrhein-Westfalen  
 
     Examples:
     - "Münster" is NOT "Neumünster"
@@ -1232,7 +1279,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Does Münster (Bayern) lie southern of Münster (Nordrhein Westfalen)?"
+    example_question = "Which cities lie in a 5km radius around the city of Münster (Bayern)?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
