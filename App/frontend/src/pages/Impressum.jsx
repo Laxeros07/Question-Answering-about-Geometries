@@ -2,76 +2,84 @@ import PageTitle from "../components/PageTitle";
 
 export default function Info() {
   return (
-    <>
-      <PageTitle title="Impressum" />
-      {/* Heading Row */}
-      <div className="container">
-        <div className="row padded_row">
-          {/* right side content*/}
-          <div className="col-md-7">
-            <h2>Legal notice</h2>
-            Spacey GmbH
-            <br />
-            <br />
-            This legal notice also applies to the Spacey social media channels:{" "}
-            <br />
-            <a
-              className="link1 text-muted text-decoration-none"
-              href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-            >
-              YouTube{" "}
-            </a>
-            <br />
-            <a
-              className="link1 text-muted text-decoration-none"
-              href="https://www.instagram.com/geochiller/"
-            >
-              Instagram{" "}
-            </a>
-            <br />
-            <br />
-            Responsible for this and the previously mentioned pages is:
-            <br />
-            <br />
-            Spacey GmbH
-            <br />
-            Heisenbergstraße 2
-            <br />
-            48149 Münster
-            <br />
-            Deutschland
-            <br />
-            <br />
-            Telefon:
-            <a
-              className="link1 text-muted text-decoration-none"
-              href="tel:+49123456789"
-            >
-              +49 123 456789
-            </a>
-            <br />
-            E-Mail:
-            <a
-              className="link1 text-muted text-decoration-none"
-              href="mailto:Apollo13.spacey@gmx.de?subject=Erreicht%20ueber%20Impressum&amp;amp;body=Sehr%20geehrtes%20Spacey%20Team,%0A%0A"
-            >
-              Apollo13.Spacey@gmx.de
-            </a>
-            <br />
-            (shadow)Fax: 123 187 1337
-            <br />
-            <br />
-            Managing directors of Spacey with sole power of representation:{" "}
-            <br />
-            Eva Langstein, Felix Disselkamp, Anne Staskiewicz
-            <br />
-            <br />
-            UstId-Nr.: DE 162261337
-            <br />
-            Handelsregister: HRB 4149, Amtsgericht Münster
+  <>
+    <PageTitle title="Impressum" />
+
+    {/* Heading Row */}
+    <div className="container">
+      <div className="row padded_row">
+        <div className="col-md-7">
+          <div className="d-flex justify-content-between align-items-start mb-4">
+            <h2 className="mb-0">Legal notice</h2>
           </div>
+          The{" "}
+          <a
+            className="link-green"
+            href="https://tu-dresden.de/impressum/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Legal notice of Technische Universität Dresden
+          </a>{" "}
+          applies with the following restrictions:
+          <br />
+          <br />
+
+          <strong>Service provider:</strong>
+          <br />
+          <br />
+
+          Chair of Geoinformatics
+          <br />
+          Faculty of Environmental Sciences
+          <br />
+          Technische Universität Dresden
+          <br />
+          <br />
+
+          Prof. Dr. rer. nat. Lars Bernard
+          <br />
+          Helmholtzstraße 10
+          <br />
+          01069 Dresden
+          <br />
+          <br />
+
+          <strong>Technical administrator:</strong>
+          <br />
+          <br />
+
+          Auriol Degbelo
+          <br />
+          Phone:{" "}
+          <a
+            className="link-green"
+            href="tel:+49-351-463-33819"
+          >
+            (+49)-351-463-33819
+          </a>
+          <br />
+          Email:{" "}
+          <a
+            className="link-green"
+            href="mailto:Auriol.Degbelo@tu-dresden.de"
+          >
+            Auriol.Degbelo@tu-dresden.de
+          </a>
+        </div>
+        <div className="col-md-4 d-flex justify-content-center align-items-start">
+          <img
+            src="/images/AGQA.png"
+            alt="Technische Universität Dresden"
+            style={{
+              maxWidth: "220px",
+              width: "100%",
+              height: "auto",
+            }}
+          />
         </div>
       </div>
-    </>
+    </div>
+  </>
   );
 }

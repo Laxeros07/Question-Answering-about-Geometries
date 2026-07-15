@@ -9,6 +9,16 @@ a {
   color: #00b7ff;
 }
 
+.link-green {
+  color: #52823f;
+  text-decoration: none;
+}
+
+.link-green:hover {
+  color: #52823f;
+  text-decoration: underline;
+}
+
 .navbar .nav-link.active {
   color: #fff !important;
   background-color: transparent;
