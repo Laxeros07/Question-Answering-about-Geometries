@@ -77,6 +77,8 @@ instructions = """Analyze the input query and extract the following parameters.
       - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to) can include (north, south, east, west)
       - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without "next to")) or radius
       - "None": if none of the above apply
+      Example "touches": Which cities lie directly northern of Münster?
+      Example "relates": Which cities lie northern of Münster?
   </constraints>
 </relationship>
 
@@ -133,6 +135,7 @@ instructions = """Analyze the input query and extract the following parameters.
         because the query must check from Münster whether Bocholt lies western of it
       - e.g. "Does Seelze lie within the district of Hannover?" -> ["Seelze", "Hannover"]
       - e.g. "Does the district Hannover contains the city Seelze?" -> ["Hannover", "Seelze"]
+      - e.g. "Does Münster in Bayern lie northern of Augsburg?" -> ["Augsburg", "Münster", "Bayern"]
     - Do NOT include the type ("City", "AdministrativeCommunity", "District", "AdministrativeDistrict", "FederalState") of an entity into the list
   </constraints>
 </spatial_entities>
@@ -691,7 +694,7 @@ def select_relates_type(state):
     if state["distance_between"] == True:
         return "distance_between"
     
-    if state["radius"] == True or state["distance_constraint"] is not None and state.get("cardinal_direction"):
+    if (state["radius"] == True or state["distance_constraint"] is not None) and state.get("cardinal_direction"):
         return "radius_and_direction"
 
     if state["radius"] == True:
@@ -714,8 +717,24 @@ def build_direction_query(state):
     source = get_source_type(state)
 
     if state["decision_question"] == True:
+        # Only use entities that are mentioned in the question
         e1 = state["spatial_entities"][0]
         e2 = state["spatial_entities"][1]
+
+        # Find out whether the user asked for a higher hierarchy than the source entity
+        # other_hierarchy = ""
+        # for entity in state["hierarchy"]:
+        #     if entity.hierarchy == state["target_type"]:
+        #         other_hierarchy = f"""
+        #             MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+        #             MATCH path =
+        #                 (start)-[:hasFootprint]->(:Geometry)
+        #                 -[:within*1..]->(:Geometry)
+        #                 <-[:hasFootprint]-(:{entity.hierarchy} {{Name: '{entity.entity_name}'}})
+        #         """
+        #         break
+
         query = f"""
             MATCH
                 (n1:{source}),
@@ -847,14 +866,59 @@ def build_radius_query(state):
 
     # First get the ID of the source entity
     get_id_query = f"""
-    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
-    """
+        MATCH (start:{source})
+        WHERE toLower(start.Name) CONTAINS toLower("{name}")
+
+        WITH start,
+            CASE
+                WHEN toLower(start.Name) = toLower("{name}") THEN 2
+                WHEN toLower(start.Name) STARTS WITH toLower("{name}") THEN 1
+                ELSE 0
+            END AS score
+
+        WITH start, score
+        ORDER BY score DESC
+
+        OPTIONAL MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+        OPTIONAL MATCH path =
+            (start)-[:hasFootprint]->(:Geometry)
+            -[:within*1..]->(:Geometry)
+            <-[:hasFootprint]-(parent)
+
+        WITH start, g, score,
+            collect(DISTINCT {{
+                id: parent.ID,
+                name: parent.Name
+            }}) AS target
+
+        RETURN {{
+            start: {{
+                id: start.ID,
+                name: start.Name,
+                centroid: start.Centroid
+            }},
+            score: score,
+            target: target
+        }} AS result
+        """
     records = graph.query(get_id_query)
     if not records or len(records) == 0:
         return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+
+    # Run the prompt which chooses the best result if multiple candidates are returned
+    if len(records) > 1:
+        state["result"] = records
+        state = resolve_entity(state)
+        records = state["result"]
     
     # Now calculate the radius query using the retrieved ID
-    query = srf.calculate_radius(records[0]["ID"], name, state["target_type"], distance)
+    query = srf.calculate_radius(
+        records[0]["result"]["start"]["id"], 
+        name, 
+        state["target_type"], 
+        distance
+    )
 
     return {**state, "cypher_query": query}
 
@@ -965,6 +1029,8 @@ def resolve_entity(state):
     2. If multiple entities have the same highest score, you may return multiple indices.
     3. Do NOT use substring reasoning or external knowledge.
     4. Do NOT assume that similar names are related.
+    5. If the user limits the question to a specific hierarchy level, use the information provided in the targets to decide.
+        e.g. "Where is Münster in Nordrhein-Westfalen located?" -> results where the target holds Nordrhein-Westfalen  
 
     Examples:
     - "Münster" is NOT "Neumünster"
@@ -1213,7 +1279,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "show me münster in nordrehin-westfalen"
+    example_question = "Which cities lie in a 5km radius around the city of Münster (Bayern)?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
