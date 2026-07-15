@@ -74,7 +74,7 @@ instructions = """Analyze the input query and extract the following parameters.
     - The relationship can only be one of the following:
       - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned; show me "entity" in "entity" (when asked about a specific place)
       - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance/radius constraint is mentioned
-      - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to) can include (north, south, east, west)
+      - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to, surrounded by) can include (north, south, east, west)
       - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without "next to")) or radius
       - "None": if none of the above apply
       Example "touches": Which cities lie directly northern of Münster?
@@ -118,7 +118,7 @@ instructions = """Analyze the input query and extract the following parameters.
   <task>return TRUE only if the question explicitly states a radius or distance constraint without comparing two entities</task>
   <constraints>
     - relevant keywords for TRUE: "within a radius of X km/m", "in a radius of X km/m", "within X km/m distance", "in X km/m distance", "X km/m from", "X km/m around", "X km/m near", "X km/m close to"
-    - the rlationship has to be "relates"
+    - the relationship has to be "relates"
   </constraints>
 </radius>
 
@@ -141,7 +141,7 @@ instructions = """Analyze the input query and extract the following parameters.
 </spatial_entities>
 
 <hierarchy>
-<task>assign the entities to one of the following hierarchies:</task>
+<task>assign EVERY spatial entity to one of the following hierarchies:</task>
   <constraints>
     - allowed hierarchy values:
         - "City",
@@ -934,21 +934,70 @@ def build_distance_between_query(state):
 
     # Get the IDs of the source entity. The distance is then calculated later
     query = f"""
-        MATCH 
-            (n1:{source} {{Name: '{e1}'}}), 
-            (n2:{source} {{Name: '{e2}'}})
+        MATCH
+            (n1:{source}),
+            (n2:{source})
+        WHERE
+            toLower(n1.Name) CONTAINS toLower("{e1}")
+            AND toLower(n2.Name) CONTAINS toLower("{e2}")
 
-        RETURN {{
+        WITH
+            n1,
+            n2,
+            CASE
+                WHEN toLower(n1.Name) = toLower("{e1}") THEN 2
+                WHEN toLower(n1.Name) STARTS WITH toLower("{e1}") THEN 1
+                ELSE 0
+            END AS score1,
+            CASE
+                WHEN toLower(n2.Name) = toLower("{e2}") THEN 2
+                WHEN toLower(n2.Name) STARTS WITH toLower("{e2}") THEN 1
+                ELSE 0
+            END AS score2
+
+        OPTIONAL MATCH (n1)-[:hasFootprint]->(g1:Geometry)
+
+        OPTIONAL MATCH path1 =
+            (n1)-[:hasFootprint]->(:Geometry)
+            -[:within*1..]->(:Geometry)
+            <-[:hasFootprint]-(parent1)
+
+        OPTIONAL MATCH (n2)-[:hasFootprint]->(g2:Geometry)
+
+        OPTIONAL MATCH path2 =
+            (n2)-[:hasFootprint]->(:Geometry)
+            -[:within*1..]->(:Geometry)
+            <-[:hasFootprint]-(parent2)
+
+        WITH n1, n2, g1, g2, score1, score2,
+            collect(DISTINCT {{
+                id: parent1.ID,
+                name: parent1.Name
+            }}) AS target1,
+            collect(DISTINCT {{
+                id: parent2.ID,
+                name: parent2.Name
+            }}) AS target2
+
+        RETURN [{{
             start: {{
                 id: n1.ID,
-                name: n1.Name
+                name: n1.Name,
+                score: score1,
+                centroid: n1.Centroid
             }},
-            target: [{{
+            target: target1
+            }},{{
+            start: {{
                 id: n2.ID,
-                name: n2.Name
-            }}]
-        }} AS result
-    """
+                name: n2.Name,
+                score: score2,
+                centroid: n2.Centroid
+            }},
+            target: target2
+        }}] AS result
+        ORDER BY score1 + score2 DESC
+        """
     return {**state, "cypher_query": query}
 
 def build_radius_and_direction_query(state):
@@ -959,14 +1008,64 @@ def build_radius_and_direction_query(state):
 
     # First get the ID of the source entity
     get_id_query = f"""
-    MATCH (n:{source}) WHERE n.Name = "{name}" RETURN n.ID AS ID
-    """
+        MATCH (start:{source})
+        WHERE toLower(start.Name) CONTAINS toLower("{name}")
+
+        WITH start,
+            CASE
+                WHEN toLower(start.Name) = toLower("{name}") THEN 2
+                WHEN toLower(start.Name) STARTS WITH toLower("{name}") THEN 1
+                ELSE 0
+            END AS score
+
+        WITH start, score
+        ORDER BY score DESC
+
+        OPTIONAL MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+        OPTIONAL MATCH path =
+            (start)-[:hasFootprint]->(:Geometry)
+            -[:within*1..]->(:Geometry)
+            <-[:hasFootprint]-(parent)
+
+        WITH start, g, score,
+            collect(DISTINCT {{
+                id: parent.ID,
+                name: parent.Name
+            }}) AS target
+
+        RETURN {{
+            start: {{
+                id: start.ID,
+                name: start.Name,
+                centroid: start.Centroid
+            }},
+            score: score,
+            target: target
+        }} AS result
+        """
+    records = graph.query(get_id_query)
+    if not records or len(records) == 0:
+        return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+
+    # Run the prompt which chooses the best result if multiple candidates are returned
+    if len(records) > 1:
+        state["result"] = records
+        state = resolve_entity(state)
+        records = state["result"]
+
     records = graph.query(get_id_query)
     if not records or len(records) == 0:
         return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
     
     # Now calculate the radius query using the retrieved ID
-    query = srf.calculate_radius(records[0]["ID"], name, state["target_type"], distance, direction)
+    query = srf.calculate_radius(
+        records[0]["result"]["start"]["id"],
+        name, 
+        state["target_type"], 
+        distance, 
+        direction
+    )
 
     return {**state, "cypher_query": query}
 
@@ -975,10 +1074,6 @@ def execute_query(state):
     global graph
     result = graph.query(state["cypher_query"])
     cleaned = [r["result"] for r in result]
-
-    # adds the distance to the result (only works with two entities)
-    if state["distance_between"] == True:
-        cleaned = srf.calculate_distances(cleaned)
 
     # When it is a decision question, only show the geometries mentioned in the question
     if state["decision_question"] == True:
@@ -1007,9 +1102,10 @@ def resolve_entity(state):
 
     results = []
     for i, r in enumerate(state["result"]):
+        item = r if isinstance(r, dict) else {"result": r}
         results.append({
             "index": i,
-            **r
+            **item
         })
 
     prompt = f"""
@@ -1030,7 +1126,7 @@ def resolve_entity(state):
     3. Do NOT use substring reasoning or external knowledge.
     4. Do NOT assume that similar names are related.
     5. If the user limits the question to a specific hierarchy level, use the information provided in the targets to decide.
-        e.g. "Where is Münster in Nordrhein-Westfalen located?" -> results where the target holds Nordrhein-Westfalen  
+        e.g. "Where is Münster in Bayern located?" -> results where the target holds Bayern  
 
     Examples:
     - "Münster" is NOT "Neumünster"
@@ -1064,8 +1160,23 @@ def resolve_entity(state):
     indices = llm.invoke(prompt).content
     res = json.loads(indices)
     # Only save the chosen results based on the indices returned by the LLM
-    state["result"] = [state["result"][i] for i in res["indices"]]
+    # Different handling depending on whether the result is a list or a single object
+    if type(state["result"][0]) != list:
+        state["result"] = [state["result"][i] for i in res["indices"]]
+    else:
+        result = []
+        for i in res["indices"]:
+            result.append({
+                "start": state["result"][0][0]["start"],
+                "target": [state["result"][0][1]["start"]]
+            })
+        state["result"] = result
+
     state["reasoning"] = res["reasoning"]
+
+    # adds the distance to the result (only works with two entities)
+    if state["distance_between"] == True:
+        state["result"] = srf.calculate_distances(state["result"])
 
     return state
 
@@ -1279,7 +1390,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie in a 5km radius around the city of Münster (Bayern)?"
+    example_question = "What is the distance between Münster in Bayern and Augsburg?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
