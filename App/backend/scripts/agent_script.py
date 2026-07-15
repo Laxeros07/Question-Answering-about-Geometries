@@ -69,10 +69,10 @@ instructions = """Analyze the input query and extract the following parameters.
 </language>
 
 <relationship>
-  <task>extract the type of relationship mentioned in the query</task>
+  <task>extract the type of relationship mentioned in the query. It can be a question or instruction like (show me/tell me) </task>
   <constraints>
     - The relationship can only be one of the following:
-      - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned
+      - "location": the geographic position (Where lies, Where is located), no cardinal direction or distance constraint mentioned; show me "entity" in "entity" (when asked about a specific place)
       - "within": hierarchical containment (lies in, belongs to, is in), only if NO number/distance/radius constraint is mentioned
       - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to) can include (north, south, east, west)
       - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without "next to")) or radius
@@ -305,7 +305,7 @@ def extract_parameters_manually(question: str) -> ParameterExtraction:
     global llm
     prompt = f"""
         You are a JSON data extractor. Do NOT call any function. Do NOT use tools.
-        Just return a plain JSON object describing the question parameters.
+        Just return a plain JSON object describing the question/instruction parameters.
 
         {instructions.format(query=question)}
 
@@ -426,13 +426,23 @@ def interpret_query(state):
 def add_inheritance(state):
     source = get_source_type(state)
     target = state.get("target_type", "City")
-
+    hierarchy = state.get("hierarchy")
     
     if source not in HIERARCHY or target not in HIERARCHY:
         inheritance = "sub_class"
     else:
         s = HIERARCHY.index(source)
         t = HIERARCHY.index(target)
+
+        if s > t:
+            inheritance = "sub_class"
+        elif s < t:
+            inheritance = "super_class"
+        else:
+            inheritance = "same"
+    if inheritance == "same" and len(hierarchy) == 2:
+        s = HIERARCHY.index(hierarchy[0].hierarchy)
+        t = HIERARCHY.index(hierarchy[1].hierarchy)
 
         if s > t:
             inheritance = "sub_class"
