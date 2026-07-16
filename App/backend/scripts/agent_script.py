@@ -1090,8 +1090,8 @@ def execute_query(state):
 # resolve entity
 def resolve_entity(state):
 
-    # If there is only one result, return it directly
-    if len(state["result"]) == 1:
+    # If there is only one result or if its empty, return it directly
+    if len(state["result"]) == 1 or len(state["result"]) == 0:
         return state
     
     # Printable JSON
@@ -1390,7 +1390,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What is the distance between Münster in Bayern and Augsburg?"
+    example_question = "Where does Paris lie?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
