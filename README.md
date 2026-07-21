@@ -2,7 +2,7 @@
 
 <div align="center">
   <a href="https://github.com/Laxeros07/Question-Answering-about-Geometries">
-    <img src="https://github.com/Laxeros07/Question-Answering-about-Geometries/App/frontend/public/images/AGQA.png?raw=true" alt="Logo" width="20%" height="20%">
+    <img src="https://github.com/Laxeros07/Question-Answering-about-Geometries/blob/main/App/frontend/public/images/AGQA.png?raw=true" alt="Logo" width="15%" height="15%">
   </a>
 <h3 align="center">AGQA</h3> 
  Ask Germany about its administrative geometries!
@@ -65,7 +65,7 @@ It consists of multiple components, which will be explained in the following:
 <br />
 <div class="container">
   <div class="image">
-    <img align=left width="60%" src="https://github.com/Felioxx/SIS-Course/blob/main/App/public/images/Screenshot_chat.png?raw=true">
+    <img align=left width="60%" src="https://github.com/Laxeros07/Question-Answering-about-Geometries/blob/main/App/frontend/public/images/screenshot_chat.png?raw=true">
   </div>
   <div class="text">
     <p align=justify><a>On the left side of the page is the chat where you can asks questions similar to our listet examples. After asking the question the chatbot takes some time to generate the answer. When the answer is computet, the named entities in question and answer are visualized on the right side on the leaflet map.</a>
@@ -123,10 +123,12 @@ City < Administrative Community < District < Administrative District < Federal S
 - [![JavaScript][JavaScript.com]][JavaScript-url]
 - [![React][React.js]][React-url]
 - [![python][python.com]][python-url]
+- [![fastAPI][fastAPI-shield]][fastAPI-url]
 - [![nodeJS][nodeJS.com]][nodeJS-url]
 - [![Bootstrap][Bootstrap.com]][Bootstrap-url]
 - [![neo4j][neo4j.com]][neo4j-url]
 - [![openAi][openAi.com]][openAi-url]
+- [![SAIA API][saia.com]][saia-url]
 - [![StackOverflow][StackOverflow.com]][StackOverflow-url]
 
 <p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
@@ -283,6 +285,8 @@ Felix Disselkamp - fdisselk@uni-muenster.de
 
 [contributors-shield]: https://img.shields.io/github/contributors/github_username/repo_name.svg?style=for-the-badge
 [contributors-url]: https://github.com/github_username/repo_name/graphs/contributors
+[fastAPI-url]: https://fastapi.tiangolo.com/
+[fastAPI-shield]: https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi
 [forks-shield]: https://img.shields.io/github/forks/github_username/repo_name.svg?style=for-the-badge
 [forks-url]: https://github.com/github_username/repo_name/network/members
 [stars-shield]: https://img.shields.io/github/stars/github_username/repo_name.svg?style=for-the-badge
@@ -312,6 +316,8 @@ Felix Disselkamp - fdisselk@uni-muenster.de
 [JQuery-url]: https://jquery.com
 [JavaScript.com]: https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E
 [JavaScript-url]: https://www.javascript.com/
+[saia-url]: https://saia.gwdg.de/
+[saia.com]: https://img.shields.io/badge/-SAIA%20API-eee?style=for-the-badge
 [StackOverflow-url]: https://stackoverflow.com/
 [StackOverflow.com]: https://img.shields.io/badge/-Stackoverflow-FE7A16?style=for-the-badge&logo=stack-overflow&logoColor=white
 [openAi-url]: https://openai.com/
