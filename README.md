@@ -123,6 +123,7 @@ City < Administrative Community < District < Administrative District < Federal S
 - [![JavaScript][JavaScript.com]][JavaScript-url]
 - [![React][React.js]][React-url]
 - [![python][python.com]][python-url]
+- [![fastAPI][fastAPI-shield]][fastAPI-url]
 - [![nodeJS][nodeJS.com]][nodeJS-url]
 - [![Bootstrap][Bootstrap.com]][Bootstrap-url]
 - [![neo4j][neo4j.com]][neo4j-url]
@@ -283,6 +284,8 @@ Felix Disselkamp - fdisselk@uni-muenster.de
 
 [contributors-shield]: https://img.shields.io/github/contributors/github_username/repo_name.svg?style=for-the-badge
 [contributors-url]: https://github.com/github_username/repo_name/graphs/contributors
+[fastAPI-url]: https://fastapi.tiangolo.com/
+[fastAPI-shield]: https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi
 [forks-shield]: https://img.shields.io/github/forks/github_username/repo_name.svg?style=for-the-badge
 [forks-url]: https://github.com/github_username/repo_name/network/members
 [stars-shield]: https://img.shields.io/github/stars/github_username/repo_name.svg?style=for-the-badge
