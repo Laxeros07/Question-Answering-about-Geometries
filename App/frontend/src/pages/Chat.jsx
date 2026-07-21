@@ -164,10 +164,21 @@ export default function Chat() {
             )
         };
       }
+      let filename = `${layerName}`;
+      if (method !== "none") {
+        filename += `_${method}`;
+
+        if (parameter !== "") {
+          filename += `_${parameter}`;
+        }
+      }
+
+      filename += ".geojson";
+
       exportLayerToGeoJSON(
         layer,
         mapInstanceRef.current,
-        `${layerName}_${method}.geojson`,
+        filename,
         geojson
       );
     });
@@ -432,8 +443,9 @@ export default function Chat() {
 
                 {[
                   { value: "cityLayer", label: "Cities" },
+                  { value: "acLayer", label: "Administrative Communities" },
                   { value: "districtLayer", label: "Districts" },
-                  { value: "adLayer", label: "Admin Districts" },
+                  { value: "adLayer", label: "Administrative Districts" },
                   { value: "fsLayer", label: "Federal States" }
                 ].map((layer) => (
                   <div className="form-check" key={layer.value}>
