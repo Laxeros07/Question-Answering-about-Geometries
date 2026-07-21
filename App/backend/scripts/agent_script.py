@@ -398,7 +398,7 @@ def interpret_query(state):
         print(f"Using manual prompting for SAIA model {model_name}")
         response = extract_parameters_manually(question)
 
-    if response.spatial_relationship == "None":
+    if response.spatial_relationship == "None": # or neue funktion is in Germany? output yes or no (llm basiert)
         return {
             **state,
             "result": "Not valid",
