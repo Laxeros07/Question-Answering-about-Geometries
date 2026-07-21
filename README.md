@@ -65,7 +65,7 @@ It consists of multiple components, which will be explained in the following:
 <br />
 <div class="container">
   <div class="image">
-    <img align=left width="60%" src="https://github.com/Felioxx/SIS-Course/blob/main/App/public/images/Screenshot_chat.png?raw=true">
+    <img align=left width="60%" src="https://github.com/Laxeros07/Question-Answering-about-Geometries/blob/main/App/frontend/public/images/screenshot_chat.png?raw=true">
   </div>
   <div class="text">
     <p align=justify><a>On the left side of the page is the chat where you can asks questions similar to our listet examples. After asking the question the chatbot takes some time to generate the answer. When the answer is computet, the named entities in question and answer are visualized on the right side on the leaflet map.</a>
