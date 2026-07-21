@@ -1,18 +1,20 @@
+<a name="readme-top"></a>
+
 <div align="center">
-  <a href="https://github.com/Felioxx/SIS-Course">
-    <img src="https://github.com/Laxeros07/Question-Answering-about-Geometries/blob/main/App/public/images/flavicon.png?raw=true" alt="Logo" width="20%" height="20%">
+  <a href="https://github.com/Laxeros07/Question-Answering-about-Geometries">
+    <img src="https://github.com/Laxeros07/Question-Answering-about-Geometries/App/frontend/public/images/AGQA.png?raw=true" alt="Logo" width="20%" height="20%">
   </a>
-<h3 align="center">GeOverview Germany</h3> 
- Ask Germany about its most important geometries!
+<h3 align="center">AGQA</h3> 
+ Ask Germany about its administrative geometries!
   <p align="center">
         <br />
-   made <a href="https://www.uni-muenster.de/Geoinformatics/">@ifgi - UNI MUENSTER</a> 🌍
+   made <a href="https://tu-dresden.de/"> @ TU - Dresden</a> 🌍
     <br />
-    <a href="https://github.com/Felioxx/SIS-Course/tree/main/App"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/Laxeros07/Question-Answering-about-Geometries/tree/main/App"><strong>Explore the code »</strong></a>
   </p>
 </div>
 <p align="center">
--- ⭔ ♞ - ❀ - ♞ ⭔ --
+-- ⭔ ⌕ - 𓅃 - ⌕ ⭔ --
 </p>
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -24,23 +26,26 @@
     <li>
       <a href="#getting-started">Getting Started</a>
       <ul>
-        <li><a href="#installation">Installation</a></li>
+        <li><a href="#local-environment">Local environment</a></li>
+        <li><a href="#docker">Docker</a></li>
       </ul>
     </li>
+    <li><a href="#usage-goals">Usage goals</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
 
 <!-- ABOUT THE PROJECT -->
-## About The Project
-This project was done during the winter term 2024/25 at ifgi Münster as part of the Spatial Information Search Course of the Master in Geoinformatics.
 
-In this project a collaborative and interactive Web-Application was implemented. The App includes a Chatbot which is linked to a leaflet map. It is knowledged about the geometries and the federal relations of Northrhine-Westphalia. 
+## About The Project
+
+This project is a further development of [Chat with NRW](https://github.com/Felioxx/SIS-Course). It has been done during the Summer 2026 at the TU - Dresden.
+
+In this project a collaborative and interactive Web-Application was implemented. The App includes a Chat function which is linked to a leaflet map. It is knowledged about the administrative geometries and the federal relations of Germany.
 
 It consists of multiple components, which will be explained in the following:
- 
+
 <br />
 <div class="container">
       <div class="image">
@@ -73,108 +78,194 @@ It consists of multiple components, which will be explained in the following:
 <br />
 <br />
 <br />
-<p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
-<br />
-
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Questions answered by the application
 
+### The Hierarchy of the entities:
+
+City < Administrative Community < District < Administrative District < Federal State < State
+
 #### regarding location
-- Where lies (city/district/administrative district)?
+
+- Where is (_entity_name_) located?
 
 #### regarding federal levels
-- Which cities lie in the district of (district)?
-- Which cities/districts lie in the administrative district of (administrative district)?
 
-#### regarding attributes
-- What is the size of (city/districts/administrative district)?
+- Which cities lie in the district of (_entity_name_)?
+- Which cities/districts lie in the administrative district of (_entity_name_)?
 
 #### regarding relations between entities
+
 ##### distances
-- What is the distance between (city) and (city)?
-- What is the distance between (district) and (district)?
-- What is the distance between (administrative district) and (administrative district)?
+
+- What is the distance between (_city_name_) and (_city_name_)?
+- What is the distance between (_district_name_) and (_district_name_)?
+- What is the distance between (_administrative_district_name_) and (_administrative_district_name_)?
+
 ##### cardinal directions
-- Show me every city that lies western of (city)?
-- Show me every district that lies western of (district)?
-- Show me every administrative district that lies western of (administrative district)?
-- In which direction lies (city) from (city)?
-- In which direction lies (district) from (district)?
-- In which direction lies (administrative district) from (adnministrative district)?
+
+- Show me every city that lies western of (_city_name_)?
+- Show me every district that lies western of (_district_name_)?
+- Show me every administrative district that lies western of (_administrative_district_name_)?
+- In which direction lies (_city_name_) from (_city_name_)?
+- In which direction lies (_district_name_) from (_district_name_)?
+- In which direction lies (_administrative_district_name_) from (_administrative_district_name_)?
+
 ##### neighbors
-- Show me all Neighbors of (city/district/administrative district)?
-<p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
+
+- Show me all neighbors of (_entity_name_)?
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 <br />
 
 ### Built With
 
-* [![JavaScript][JavaScript.com]][JavaScript-url]
-* [![python][python.com]][python-url]
-* [![nodeJS][nodeJS.com]][nodeJS-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
-* [![JQuery][JQuery.com]][JQuery-url]
-* [![neo4j][neo4j.com]][neo4j-url]
-* [![openAi][openAi.com]][openAi-url]
-* [![StackOverflow][StackOverflow.com]][StackOverflow-url]
+- [![JavaScript][JavaScript.com]][JavaScript-url]
+- [![React][React.js]][React-url]
+- [![python][python.com]][python-url]
+- [![nodeJS][nodeJS.com]][nodeJS-url]
+- [![Bootstrap][Bootstrap.com]][Bootstrap-url]
+- [![neo4j][neo4j.com]][neo4j-url]
+- [![openAi][openAi.com]][openAi-url]
+- [![StackOverflow][StackOverflow.com]][StackOverflow-url]
 
 <p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
 
-
-
 <!-- GETTING STARTED -->
+
 ## Getting Started
 
-### Installation
+### Local environment
+
+#### Requirements:
+
+- Install the [Neo4j Commmunity Edition](https://neo4j.com/product/community-edition/)
+
+#### Installation:
 
 1. Clone the repo
    ```sh
-   https://github.com/Felioxx/SIS-Course
+   https://github.com/Laxeros07/Question-Answering-about-Geometries
    ```
-2. Install NPM packages in the root directory.
+2. Install NPM packages in the frontend directory.
    ```sh
-   cd App
+   cd App/frontend
    npm install
    ```
-3. Run the application
+3. Install python requirements in the backend directory.
    ```sh
+   cd App/backend
+   pip install -r requirements.txt
+   ```
+4. Before starting the backend make sure Neo4j is running:
+
+   4.1. Open a console and navigate to the installation directory.
+
+   4.2. Start the server:
+   - Windows, use:
+
+   ```sh
+   bin\neo4j-admin server console
+   ```
+
+   - Linux/Mac, use:
+
+   ```sh
+   ./bin/neo4j-admin server console
+   ```
+
+   For full instructions, see https://neo4j.com/docs/operations-manual/current/installation/
+
+   4.3. open http://localhost:7474/
+
+5. Fill the database.
+
+- Open https://data-importer.neo4j.io/
+- Click on Browse and select all files in the folder neo4j_data
+- Click on the three points next to "run model". Click on "Open model" and select the JSON file in the Graph folder.
+- Then run the import to fill the database
+
+6. Start the backend
+
+   ```bash
+   cd App_new/backend
+   uvicorn api.main:app --reload --port 8000
+   ```
+
+- runs on: `http://localhost:8000`
+
+7. Start the frontend
+
+   ```bash
+   cd App_new/frontend
    npm start
    ```
-<p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
 
+- runs on: `http://localhost:3000`
+
+### Docker
+
+#### Requirements:
+
+- Install [Docker](https://docs.docker.com/engine/install/)
+
+#### Installation:
+
+1. Clone the repo
+   ```sh
+   https://github.com/Laxeros07/Question-Answering-about-Geometries
+   ```
+2. Build the App
+
+   ```sh
+   cd .\App\
+   docker compose up --build
+   ```
+
+- runs on: `http://localhost:3000`
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- USAGE EXAMPLES -->
+
 ## Usage goals
+
 #### Importance of the application
+
 - Works with the “complete” geometries
 - Has knowledge about the relations
 - Visualization on map
 - Easy to use (less complex than Google Maps f.e.)
 
 #### Target users
+
 - Local government workers
 - Citizens
 - People who struggle with current Map services
 
 #### Benefits for the users
+
 - Easy useage
 - Precise visualization
 - Correct distances
 - Explanation of the federal system
 
-
 <p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
 
-
 <!-- LICENSE -->
+
 ## License
-Copyright (c) 2025 Spacey GmbH
+
+Copyright (c) 2027
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
 
-<p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- CONTACT -->
+
 ## Contact
+
+Auriol Degbelo - auriol.degbelo@tu-dresden.de
 
 Eva Langstein - elangste@uni-muenster.de
 
@@ -182,17 +273,14 @@ Anne Staskiewicz - anne.staskiewicz@uni-muenster.de
 
 Felix Disselkamp - fdisselk@uni-muenster.de
 
-##### Project Link: [https://github.com/Felioxx/SIS-Course](https://github.com/Felioxx/SIS-Course)
+##### Project Link: https://github.com/Laxeros07/Question-Answering-about-Geometries
 
-<p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
-
-
-
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 <!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<a name="readme-top"></a>
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+
 [contributors-shield]: https://img.shields.io/github/contributors/github_username/repo_name.svg?style=for-the-badge
 [contributors-url]: https://github.com/github_username/repo_name/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/github_username/repo_name.svg?style=for-the-badge
@@ -228,6 +316,7 @@ Felix Disselkamp - fdisselk@uni-muenster.de
 [StackOverflow.com]: https://img.shields.io/badge/-Stackoverflow-FE7A16?style=for-the-badge&logo=stack-overflow&logoColor=white
 [openAi-url]: https://openai.com/
 [openAi.com]: https://img.shields.io/badge/-OpenAI%20API-eee?style=for-the-badge&logo=openai&logoColor=412991
+
 [nodeJS-url]: [https://pixijs.com/](https://nodejs.org/en)
 [nodeJS.com]: https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white
 [neo4j.com]: https://img.shields.io/badge/neo4j-4581C3?style=for-the-badge&logo=neo4j&logoColor=white
