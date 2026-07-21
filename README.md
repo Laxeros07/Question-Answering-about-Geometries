@@ -2,7 +2,7 @@
 
 <div align="center">
   <a href="https://github.com/Laxeros07/Question-Answering-about-Geometries">
-    <img src="https://github.com/Laxeros07/Question-Answering-about-Geometries/App/frontend/public/images/AGQA.png?raw=true" alt="Logo" width="20%" height="20%">
+    <img src="https://github.com/Laxeros07/Question-Answering-about-Geometries/blob/main/App/frontend/public/images/AGQA.png?raw=true" alt="Logo" width="15%" height="15%">
   </a>
 <h3 align="center">AGQA</h3> 
  Ask Germany about its administrative geometries!
