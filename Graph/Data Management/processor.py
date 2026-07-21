@@ -38,14 +38,15 @@ def createAreas(df):
     return areas
 
 # Main process function which calculates all needed attributes for the layers and returns them as dictionaries.
-def process_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, all_geometries):
+def process_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states,all_geometries):
     # Create own IDs with a prefix
     ids_c = createIds(cities, "C")
     ids_v = createIds(administrativeCommunities, "V")
     ids_d = createIds(districts, "D")
     ids_a = createIds(administrativeDistricts, "A")
     ids_f = createIds(federalStates, "F")
-    ids_all = np.concatenate((ids_c, ids_v, ids_d, ids_a, ids_f))
+    ids_s = createIds(states, "S")
+    ids_all = np.concatenate((ids_c, ids_v, ids_d, ids_a, ids_f, ids_s))
 
     # Assign the IDs to the dataframes
     cities["ID"] = ids_c
@@ -53,13 +54,14 @@ def process_layers(cities, administrativeCommunities, districts, administrativeD
     districts["ID"] = ids_d
     administrativeDistricts["ID"] = ids_a
     federalStates["ID"] = ids_f
-
+    states["ID"] = ids_s
     # Calculate centroids
     centroids_c = createCentroids(cities)
     centroids_v = createCentroids(administrativeCommunities)
     centroids_d = createCentroids(districts)
     centroids_a = createCentroids(administrativeDistricts)
     centroids_f = createCentroids(federalStates)
+    centroids_s = createCentroids(states)
 
     # areas_c = createAreas(cities)
     # areas_v = createAreas(administrativeCommunities)
@@ -112,6 +114,9 @@ def process_layers(cities, administrativeCommunities, districts, administrativeD
     )
     districts["Parent"] = districts["ID_y"].fillna(districts["ID"])
 
+    # All federal states have Germany as parent, so we can assign it directly
+    federalStates["Parent"] = "S1"
+
     # Old: Export with area
     # cities = {"ID":ids_c, "Name": cities.Name_x, "Parent": cities.Name_y, "Centroid": centroids_c, "Area": areas_c, "Geometry": cities.geometry_y}
     # administrativeCommunities = {"ID":ids_v, "Name": administrativeCommunities.Name_x, "Parent": administrativeCommunities.Name_y, "Centroid": centroids_v, "Area": areas_v, "Geometry": administrativeCommunities.geometry_y}
@@ -124,22 +129,25 @@ def process_layers(cities, administrativeCommunities, districts, administrativeD
     administrativeCommunities = pd.DataFrame({"ID":administrativeCommunities.ID_x, "Name": administrativeCommunities.Name_x, "Parent": administrativeCommunities.Parent, "Centroid": centroids_v, "Geometry": administrativeCommunities.geometry_x})
     districts = pd.DataFrame({"ID":districts.ID_x, "Name": districts.Name_x, "Parent": districts.Parent, "Centroid": centroids_d, "Geometry": districts.geometry_x})
     administrativeDistricts = pd.DataFrame({"ID":administrativeDistricts.ID_x, "Name": administrativeDistricts.Name_x, "Parent": administrativeDistricts.Parent, "Centroid": centroids_a, "Geometry": administrativeDistricts.geometry_x})
-    federalStates = pd.DataFrame({"ID":federalStates.ID, "Name": federalStates.Name, "Centroid": centroids_f, "Geometry": federalStates.geometry})
+    federalStates = pd.DataFrame({"ID":federalStates.ID, "Name": federalStates.Name, "Parent": federalStates.Parent, "Centroid": centroids_f, "Geometry": federalStates.geometry})
+    states = pd.DataFrame({"ID":states.ID, "Name": states.Name, "Centroid": centroids_s, "Geometry": states.geometry})
+
     geometries = pd.DataFrame({"ID":ids_all,"Geometry": all_geometries})
     geometryTypes = pd.DataFrame({"ID": ids_all})
     hasFootprint = pd.DataFrame({"Start_Point": ids_all, "End_Point": ids_all})
 
-    return cities, administrativeCommunities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint
+    return cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states, geometries, geometryTypes, hasFootprint
 
 # Calculates the within relation
-def process_within(cities, administrativeCommunities, districts, administrativeDistricts, federalStates):
+def process_within(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states):
     
     # Dataframe which only contains the Start ID and the End ID
     within = within = pd.concat([
         cities[["ID", "Parent"]].rename(columns={"ID": "Start_Point", "Parent": "End_Point"}),
         administrativeCommunities[["ID", "Parent"]].rename(columns={"ID": "Start_Point", "Parent": "End_Point"}),
         districts[["ID", "Parent"]].rename(columns={"ID": "Start_Point", "Parent": "End_Point"}),
-        administrativeDistricts[["ID", "Parent"]].rename(columns={"ID": "Start_Point", "Parent": "End_Point"})
+        administrativeDistricts[["ID", "Parent"]].rename(columns={"ID": "Start_Point", "Parent": "End_Point"}),
+        federalStates[["ID", "Parent"]].rename(columns={"ID": "Start_Point", "Parent": "End_Point"}),
     ], ignore_index=True)
 
     return within
@@ -214,7 +222,7 @@ def buildTouchesArray(polygons):
     return result
 
 # Calculates the touches relation
-def process_touches(cities, administrativeCommunities, districts, administrativeDistricts, federalStates):
+def process_touches(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states):
 
     cities_array = buildTouchesArray(cities)
     administrativeCommunities_array = buildTouchesArray(administrativeCommunities)

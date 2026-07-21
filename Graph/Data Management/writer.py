@@ -3,7 +3,7 @@ import csv
 
 # Writes the files
 
-def write_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint):
+def write_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states, geometries, geometryTypes, hasFootprint):
     cities = cities.drop(columns=["Parent"])
     cities = cities.drop(columns=["Geometry"])
     cities.to_csv('App\\neo4j_data\\cities.csv', index=False, sep = ",")
@@ -20,8 +20,12 @@ def write_layers(cities, administrativeCommunities, districts, administrativeDis
     administrativeDistricts = administrativeDistricts.drop(columns=["Geometry"])
     administrativeDistricts.to_csv('App\\neo4j_data\\administrativeDistricts.csv', index=False, sep = ",") 
 
+    federalStates = federalStates.drop(columns=["Parent"])
     federalStates = federalStates.drop(columns=["Geometry"])
     federalStates.to_csv('App\\neo4j_data\\federalStates.csv', index=False, sep = ",")
+
+    states = states.drop(columns=["Geometry"])
+    states.to_csv('App\\neo4j_data\\states.csv', index=False, sep = ",")
 
     geometries.to_csv('App\\backend\data\geometries.csv', index=False)
 

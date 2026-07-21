@@ -8,9 +8,10 @@
   file_3: 'administrativeDistricts.csv',
   file_4: 'federalStates.csv',
   file_5: 'administrativeCommunities.csv',
-  file_6: 'hasFootprint.csv',
-  file_7: 'within.csv',
-  file_8: 'touches.csv'
+  file_6: 'states.csv',
+  file_7: 'hasFootprint.csv',
+  file_8: 'within.csv',
+  file_9: 'touches.csv'
 };
 
 // CONSTRAINT creation
@@ -18,7 +19,7 @@
 //
 // Create node uniqueness constraints, ensuring no duplicates for the given node label and ID property exist in the database. This also ensures no duplicates are introduced in future.
 //
-// NOTE: The following constraint creation syntax is valid for database version 4.4.0 and above.
+// NOTE: The following constraint creation syntax is generated based on the current connected database version 2026.02.3.
 CREATE CONSTRAINT `ID_Geometry_uniq` IF NOT EXISTS
 FOR (n: `Geometry`)
 REQUIRE (n.`ID`) IS UNIQUE;
@@ -36,6 +37,9 @@ FOR (n: `FederalState`)
 REQUIRE (n.`ID`) IS UNIQUE;
 CREATE CONSTRAINT `ID_AdministrativeCommunity_uniq` IF NOT EXISTS
 FOR (n: `AdministrativeCommunity`)
+REQUIRE (n.`ID`) IS UNIQUE;
+CREATE CONSTRAINT `ID_State_uniq` IF NOT EXISTS
+FOR (n: `State`)
 REQUIRE (n.`ID`) IS UNIQUE;
 
 :param {
@@ -112,12 +116,23 @@ CALL {
   SET n.`Centroid` = row.`Centroid`
 } IN TRANSACTIONS OF 10000 ROWS;
 
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_6) AS row
+WITH row
+WHERE NOT row.`ID` IN $idsToSkip AND NOT row.`ID` IS NULL
+CALL {
+  WITH row
+  MERGE (n: `State` { `ID`: row.`ID` })
+  SET n.`ID` = row.`ID`
+  SET n.`Name` = row.`Name`
+  SET n.`Centroid` = row.`Centroid`
+} IN TRANSACTIONS OF 10000 ROWS;
+
 
 // RELATIONSHIP load
 // -----------------
 //
 // Load relationships in batches, one relationship type at a time. Relationships are created using a MERGE statement, meaning only one relationship of a given type will ever be created between a pair of nodes.
-LOAD CSV WITH HEADERS FROM ($file_path_root + $file_6) AS row
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_7) AS row
 WITH row 
 CALL {
   WITH row
@@ -126,7 +141,7 @@ CALL {
   MERGE (source)-[r: `hasFootprint`]->(target)
 } IN TRANSACTIONS OF 10000 ROWS;
 
-LOAD CSV WITH HEADERS FROM ($file_path_root + $file_6) AS row
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_7) AS row
 WITH row 
 CALL {
   WITH row
@@ -135,7 +150,7 @@ CALL {
   MERGE (source)-[r: `hasFootprint`]->(target)
 } IN TRANSACTIONS OF 10000 ROWS;
 
-LOAD CSV WITH HEADERS FROM ($file_path_root + $file_6) AS row
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_7) AS row
 WITH row 
 CALL {
   WITH row
@@ -144,7 +159,7 @@ CALL {
   MERGE (source)-[r: `hasFootprint`]->(target)
 } IN TRANSACTIONS OF 10000 ROWS;
 
-LOAD CSV WITH HEADERS FROM ($file_path_root + $file_6) AS row
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_7) AS row
 WITH row 
 CALL {
   WITH row
@@ -153,7 +168,7 @@ CALL {
   MERGE (source)-[r: `hasFootprint`]->(target)
 } IN TRANSACTIONS OF 10000 ROWS;
 
-LOAD CSV WITH HEADERS FROM ($file_path_root + $file_7) AS row
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_8) AS row
 WITH row 
 CALL {
   WITH row
@@ -162,7 +177,7 @@ CALL {
   MERGE (source)-[r: `within`]->(target)
 } IN TRANSACTIONS OF 10000 ROWS;
 
-LOAD CSV WITH HEADERS FROM ($file_path_root + $file_8) AS row
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_9) AS row
 WITH row 
 CALL {
   WITH row
@@ -172,11 +187,20 @@ CALL {
   SET r.`Rel_Position` = row.`Rel_Position`
 } IN TRANSACTIONS OF 10000 ROWS;
 
-LOAD CSV WITH HEADERS FROM ($file_path_root + $file_6) AS row
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_7) AS row
 WITH row 
 CALL {
   WITH row
   MATCH (source: `AdministrativeCommunity` { `ID`: row.`Start_Point` })
+  MATCH (target: `Geometry` { `ID`: row.`End_Point` })
+  MERGE (source)-[r: `hasFootprint`]->(target)
+} IN TRANSACTIONS OF 10000 ROWS;
+
+LOAD CSV WITH HEADERS FROM ($file_path_root + $file_7) AS row
+WITH row 
+CALL {
+  WITH row
+  MATCH (source: `State` { `ID`: row.`Start_Point` })
   MATCH (target: `Geometry` { `ID`: row.`End_Point` })
   MERGE (source)-[r: `hasFootprint`]->(target)
 } IN TRANSACTIONS OF 10000 ROWS;
