@@ -128,6 +128,7 @@ City < Administrative Community < District < Administrative District < Federal S
 - [![Bootstrap][Bootstrap.com]][Bootstrap-url]
 - [![neo4j][neo4j.com]][neo4j-url]
 - [![openAi][openAi.com]][openAi-url]
+- [![SAIA API][saia.com]][saia-url]
 - [![StackOverflow][StackOverflow.com]][StackOverflow-url]
 
 <p align="right">(<a href="https://github.com/Felioxx/SIS-Course?tab=readme-ov-file#chat-with-nrw">back to top</a>)</p>
@@ -315,6 +316,8 @@ Felix Disselkamp - fdisselk@uni-muenster.de
 [JQuery-url]: https://jquery.com
 [JavaScript.com]: https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E
 [JavaScript-url]: https://www.javascript.com/
+[saia-url]: https://saia.gwdg.de/
+[saia.com]: https://img.shields.io/badge/-SAIA%20API-eee?style=for-the-badge
 [StackOverflow-url]: https://stackoverflow.com/
 [StackOverflow.com]: https://img.shields.io/badge/-Stackoverflow-FE7A16?style=for-the-badge&logo=stack-overflow&logoColor=white
 [openAi-url]: https://openai.com/
