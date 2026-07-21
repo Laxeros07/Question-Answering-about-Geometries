@@ -61,7 +61,7 @@ export default function Home() {
       >
         <div className="card-body">
           <p className="blockquote m-0">
-            <b>AGQA</b> stands for ”<b>A</b>dministraitive <b>G</b>eometry <b>Q</b>uestion <b>A</b>nswering”.
+            <b>AGQA</b> stands for ”<b>A</b>dministrative <b>G</b>eometry <b>Q</b>uestion <b>A</b>nswering”.
           </p>
         </div>
       </div>
