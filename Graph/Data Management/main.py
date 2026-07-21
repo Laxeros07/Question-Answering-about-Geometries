@@ -8,16 +8,16 @@ from writer import write_layers, write_within, write_touches, write_touches, wri
 # If you want to generate all csv files, simply pass ["all"] or leave the argument empty.
 def main(generate=["all"]):
     # Load the layers which are needed in all processes
-    cities, administrativeCommunities, districts, administrativeDistricts, federalStates, all_geometries = load_layers()
-    cities, administrativeCommunities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint = process_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, all_geometries)
+    cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states, all_geometries = load_layers()
+    cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states, geometries, geometryTypes, hasFootprint = process_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states, all_geometries)
 
     if "all" in generate or "layers" in generate:
-        write_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, geometries, geometryTypes, hasFootprint)
+        write_layers(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states, geometries, geometryTypes, hasFootprint)
     if "all" in generate or "within" in generate:
-        within = process_within(cities, administrativeCommunities, districts, administrativeDistricts, federalStates)
+        within = process_within(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states)
         write_within(within)
     if "all" in generate or "touches" in generate:
-        touches = process_touches(cities, administrativeCommunities, districts, administrativeDistricts, federalStates)
+        touches = process_touches(cities, administrativeCommunities, districts, administrativeDistricts, federalStates, states)
         write_touches(touches)
     if "relates" in generate:
         # Was taken out of the calculation because it took to long. Is calculated on the fly when the user asks for it.

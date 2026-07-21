@@ -49,7 +49,7 @@ export default function Home() {
 
           <p>
             The application was originally developed as part of a university course at the
-            University of Münster and was later further enhanced at the University of Dresden.
+            University of Münster and was later further enhanced at Dresden University of Technology.
           </p>
         </div>
       </div>
@@ -61,7 +61,7 @@ export default function Home() {
       >
         <div className="card-body">
           <p className="blockquote m-0">
-            “<b>AGQA</b> - <b>Q</b>uestion <b>A</b>nswering about <b>A</b>dministraitive <b>G</b>eometries”
+            <b>AGQA</b> stands for ”<b>A</b>dministrative <b>G</b>eometry <b>Q</b>uestion <b>A</b>nswering”.
           </p>
         </div>
       </div>

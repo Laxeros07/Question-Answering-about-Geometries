@@ -12,22 +12,22 @@
       {
         "id": "n:2",
         "position": {
-          "x": 89.12786686101506,
-          "y": 134.71561564480766
+          "x": 79.25464707296948,
+          "y": 144.58883543285324
         }
       },
       {
         "id": "n:3",
         "position": {
-          "x": 207.46971594920285,
-          "y": 53.5915333009329
+          "x": 210.7607892118847,
+          "y": 34.94211814573566
         }
       },
       {
         "id": "n:4",
         "position": {
-          "x": 206.13730856788354,
-          "y": -22.986682873056875
+          "x": 207.23433298877748,
+          "y": -42.73312244914806
         }
       },
       {
@@ -40,8 +40,15 @@
       {
         "id": "n:6",
         "position": {
-          "x": 151.1329189608026,
-          "y": 110.9102742461315
+          "x": 154.42399222348448,
+          "y": 97.74598119540403
+        }
+      },
+      {
+        "id": "n:7",
+        "position": {
+          "x": 113.55526030464426,
+          "y": -197.56618953506367
         }
       }
     ]
@@ -215,6 +222,36 @@
                 "nullable": true
               }
             ]
+          },
+          {
+            "$id": "nl:7",
+            "token": "State",
+            "properties": [
+              {
+                "$id": "p:5",
+                "token": "ID",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              {
+                "$id": "p:9",
+                "token": "Name",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              {
+                "$id": "p:13",
+                "token": "Centroid",
+                "type": {
+                  "type": "string"
+                },
+                "nullable": true
+              }
+            ]
           }
         ],
         "relationshipTypes": [
@@ -259,6 +296,11 @@
           },
           {
             "$id": "rt:6",
+            "token": "hasFootprint",
+            "properties": []
+          },
+          {
+            "$id": "rt:8",
             "token": "hasFootprint",
             "properties": []
           }
@@ -309,6 +351,14 @@
             "labels": [
               {
                 "$ref": "#nl:6"
+              }
+            ]
+          },
+          {
+            "$id": "n:7",
+            "labels": [
+              {
+                "$ref": "#nl:7"
               }
             ]
           }
@@ -393,6 +443,18 @@
             },
             "from": {
               "$ref": "#n:6"
+            },
+            "to": {
+              "$ref": "#n:1"
+            }
+          },
+          {
+            "$id": "r:8",
+            "type": {
+              "$ref": "#rt:8"
+            },
+            "from": {
+              "$ref": "#n:7"
             },
             "to": {
               "$ref": "#n:1"
@@ -483,6 +545,20 @@
                 "$ref": "#p:18"
               }
             ]
+          },
+          {
+            "$id": "c:7",
+            "name": "ID_State_uniq",
+            "constraintType": "uniqueness",
+            "entityType": "node",
+            "nodeLabel": {
+              "$ref": "#nl:7"
+            },
+            "properties": [
+              {
+                "$ref": "#p:5"
+              }
+            ]
           }
         ],
         "indexes": [
@@ -569,6 +645,20 @@
                 "$ref": "#p:18"
               }
             ]
+          },
+          {
+            "$id": "i:7",
+            "name": "ID_State_uniq",
+            "indexType": "default",
+            "entityType": "node",
+            "nodeLabel": {
+              "$ref": "#nl:7"
+            },
+            "properties": [
+              {
+                "$ref": "#p:5"
+              }
+            ]
           }
         ]
       }
@@ -622,6 +712,14 @@
           "keyProperty": {
             "$ref": "#p:18"
           }
+        },
+        {
+          "node": {
+            "$ref": "#n:7"
+          },
+          "keyProperty": {
+            "$ref": "#p:5"
+          }
         }
       ]
     },
@@ -669,14 +767,14 @@
               },
               {
                 "name": "Name",
-                "sample": "Braunschweig",
+                "sample": "Flensburg",
                 "recommendedType": {
                   "type": "string"
                 }
               },
               {
                 "name": "Centroid",
-                "sample": "POINT (10.52417168914646 52.275262185464975)",
+                "sample": "POINT (9.440383577156673 54.78964187919546)",
                 "recommendedType": {
                   "type": "string"
                 }
@@ -696,14 +794,14 @@
               },
               {
                 "name": "Name",
-                "sample": "Braunschweig",
+                "sample": "Flensburg",
                 "recommendedType": {
                   "type": "string"
                 }
               },
               {
                 "name": "Centroid",
-                "sample": "POINT (10.52417168914646 52.275262185464975)",
+                "sample": "POINT (9.440383577156673 54.78964187919546)",
                 "recommendedType": {
                   "type": "string"
                 }
@@ -723,14 +821,14 @@
               },
               {
                 "name": "Name",
-                "sample": "Niedersachsen",
+                "sample": "Schleswig-Holstein",
                 "recommendedType": {
                   "type": "string"
                 }
               },
               {
                 "name": "Centroid",
-                "sample": "POINT (9.15912197287719 52.767405908560576)",
+                "sample": "POINT (9.815533079255523 54.185586799977045)",
                 "recommendedType": {
                   "type": "string"
                 }
@@ -803,14 +901,14 @@
               },
               {
                 "name": "End_Point",
-                "sample": "C2",
+                "sample": "C747",
                 "recommendedType": {
                   "type": "string"
                 }
               },
               {
                 "name": "Rel_Position",
-                "sample": "southwestern",
+                "sample": "southeastern",
                 "recommendedType": {
                   "type": "string"
                 }
@@ -850,14 +948,41 @@
               },
               {
                 "name": "Name",
-                "sample": "Braunschweig",
+                "sample": "Flensburg",
                 "recommendedType": {
                   "type": "string"
                 }
               },
               {
                 "name": "Centroid",
-                "sample": "POINT (10.52417168914646 52.275262185464975)",
+                "sample": "POINT (9.440383577156673 54.78964187919546)",
+                "recommendedType": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          {
+            "name": "states.csv",
+            "expanded": true,
+            "fields": [
+              {
+                "name": "ID",
+                "sample": "S1",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "Name",
+                "sample": "Deutschland",
+                "recommendedType": {
+                  "type": "string"
+                }
+              },
+              {
+                "name": "Centroid",
+                "sample": "POINT (10.393610469670655 51.11465409135425)",
                 "recommendedType": {
                   "type": "string"
                 }
@@ -1010,6 +1135,32 @@
               }
             }
           ]
+        },
+        {
+          "node": {
+            "$ref": "#n:7"
+          },
+          "tableName": "states.csv",
+          "propertyMappings": [
+            {
+              "fieldName": "ID",
+              "property": {
+                "$ref": "#p:5"
+              }
+            },
+            {
+              "fieldName": "Name",
+              "property": {
+                "$ref": "#p:9"
+              }
+            },
+            {
+              "fieldName": "Centroid",
+              "property": {
+                "$ref": "#p:13"
+              }
+            }
+          ]
         }
       ],
       "relationshipMappings": [
@@ -1101,6 +1252,19 @@
         {
           "relationship": {
             "$ref": "#r:6"
+          },
+          "tableName": "hasFootprint.csv",
+          "propertyMappings": [],
+          "fromMapping": {
+            "fieldName": "Start_Point"
+          },
+          "toMapping": {
+            "fieldName": "End_Point"
+          }
+        },
+        {
+          "relationship": {
+            "$ref": "#r:8"
           },
           "tableName": "hasFootprint.csv",
           "propertyMappings": [],

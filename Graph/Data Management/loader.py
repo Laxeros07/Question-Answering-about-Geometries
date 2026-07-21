@@ -9,6 +9,7 @@ def load_layers():
     geopandas_d = gpd.read_file('Graph\Data Management\Geometries\Shapes\Kreis.shp')
     geopandas_a = gpd.read_file('Graph\Data Management\Geometries\Shapes\Regierungsbezirk.shp')
     geopandas_f = gpd.read_file('Graph\Data Management\Geometries\Shapes\Land.shp')
+    geopandas_s = gpd.read_file('Graph\Data Management\Geometries\Shapes\Staat.shp')
 
     # geopandas_c = geopandas_c.set_crs("EPSG:31467")
     # geopandas_v = geopandas_v.set_crs("EPSG:31467")
@@ -32,6 +33,6 @@ def load_layers():
     #geopandas_a = geopandas_a[geopandas_a['SN_L'].isin(["01", "02", "03", "04", "05", "06", "07"])]
 
     # Concatenate all dataframes together
-    converted_df_all = np.concatenate((geopandas_c.geometry, geopandas_v.geometry, geopandas_d.geometry, geopandas_a.geometry, geopandas_f.geometry))
+    converted_df_all = np.concatenate((geopandas_c.geometry, geopandas_v.geometry, geopandas_d.geometry, geopandas_a.geometry, geopandas_f.geometry, geopandas_s.geometry))
 
-    return geopandas_c, geopandas_v, geopandas_d, geopandas_a, geopandas_f, converted_df_all
+    return geopandas_c, geopandas_v, geopandas_d, geopandas_a, geopandas_f, geopandas_s, converted_df_all

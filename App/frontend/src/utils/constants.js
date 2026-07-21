@@ -1,2 +1,7 @@
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000";
+const apiUrl = process.env.REACT_APP_API_URL || "";
+
+if (!apiUrl) {
+  throw new Error("REACT_APP_API_URL is not defined");
+}
+
+export const API_BASE_URL = apiUrl;
