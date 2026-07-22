@@ -1,3 +1,4 @@
+import copy
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -1207,14 +1208,19 @@ def verbalize(state):
         """
     else:
 
+        # Only use the first 50 targets for verbalization, but keep track of how many are left
+        prompt_result = copy.deepcopy(state["result"])
+        for r in prompt_result:
+            r["target_total"] = len(r["target"])
+            r["target"] = r["target"][:50]
+        
         # Regular answer
         prompt = f"""
         Turn the result into natural language based on the context of the question. 
         Do not use any external knowledge, only the information provided in the result.
 
         Question: {state['question']}
-        Result: {state['result']}
-        spatial_relationship: {state['spatial_relationship']}
+        Result: {prompt_result}
 
         Answer in this Language: {state['language']}
 
@@ -1248,8 +1254,10 @@ def verbalize(state):
         ✗ Bayern ist ein Staat.
 
         Rules:
-        - If the result includes distance (float), it is a distance in km.
-        - The first letter of the id states the hierarchy level:
+        - If target_total is larger than the number of provided targets, mention that only the first N targets are shown and that additional matches exist.
+          Also mention the total number of matches.
+        - If the result includes distance (float), it is a Distance in km. 
+        - The first letter of the id states which hierarchy level the result has:
             - C = City
             - V = AdministrativeCommunity
             - D = District
@@ -1265,7 +1273,7 @@ def verbalize(state):
             - Then say the reasoning for the answer based on the result
             Further information:
             - If the result is empty: the answer is no
-            - Length of target: {len(state["result"][0]["target"]) if len(state["result"]) != 0 else 0}
+            - Length of target: {len(prompt_result[0]["target"]) if len(prompt_result) != 0 else 0}
                 - If length of targets > 0 = True: the answer is yes, else the answer is no
             - rephrase the question as answer
 
@@ -1422,7 +1430,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Where does Paris lie?"
+    example_question = "Which cities are in Bayern?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
