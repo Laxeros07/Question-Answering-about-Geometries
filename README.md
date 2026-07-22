@@ -49,7 +49,7 @@ It consists of multiple components, which will be explained in the following:
 <br />
 <div class="container">
       <div class="image">
-        <img align=left width="30%"  src="https://github.com/Felioxx/SIS-Course/blob/main/App/public/images/screenshot_apikey.png?raw=true">
+        <img align=left width="30%"  src="https://github.com/Laxeros07/Question-Answering-about-Geometries/blob/main/App/frontend/public/images/screenshot_api.png?raw=true">
       </div>
       <div class="text">
         <p align=justify><a> In order to use the chatbot, one has to enter a purchased </a> <a href="https://openai.com/index/openai-api/">Open AI API Key</a> <a>            The field for entering the  key opens on loading the /chat page.</a>
