@@ -1214,14 +1214,23 @@ def verbalize(state):
 
         Question: {state['question']}
         Result: {state['result']}
+        spatial_relationship: {state['spatial_relationship']}
 
         Answer in this Language: {state['language']}
 
         Describe all hierarchy levels of the result in the answer. 
-        The hierarchy levels are: City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState < State.
-        Everything lies within the Level State.
 
-        If language is German, use the following translations for the hierarchy levels:
+        Hierarchy (lowest to highest):
+        City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState < State
+
+        Important:
+        - FederalState and State are two different hierarchy levels.
+        - FederalState represents a German "Bundesland" (e.g. Hessen, Bayern, Nordrhein-Westfalen).
+        - State represents the sovereign country. In this dataset there is exactly one State: Germany.
+        - No other entity than Germany may ever be described as a State or Bundesstaat.
+        - Hessen, Bayern, Sachsen, etc. are always FederalStates (Bundesländer), never States (Bundesstaaten).
+
+        If language is German, use these translations:
         - City -> Stadt
         - AdministrativeCommunity -> Verwaltungsgemeinde
         - District -> Kreis
@@ -1229,17 +1238,27 @@ def verbalize(state):
         - FederalState -> Bundesland
         - State -> Bundesstaat
 
+        Examples:
+        ✓ Frankfurt am Main liegt im Bundesland Hessen in Deutschland.
+        ✓ Bayern ist ein Bundesland Deutschlands.
+        ✓ Deutschland ist ein Bundesstaat.
+
+        ✗ Frankfurt am Main liegt im Bundesstaat Hessen.
+        ✗ Hessen ist ein Bundesstaat.
+        ✗ Bayern ist ein Staat.
+
         Rules:
-        - If the result includes distance (float), it is a Distance in km. 
-        - The first letter of the id states which hierarchy level the result has:
+        - If the result includes distance (float), it is a distance in km.
+        - The first letter of the id states the hierarchy level:
             - C = City
-            - V = Administrative Community
+            - V = AdministrativeCommunity
             - D = District
-            - A = Administrative District
-            - F = Federal State
+            - A = AdministrativeDistrict
+            - F = FederalState
             - S = State
-        - include the level in the answer but NOT the id
-        - Germany is always on the State level
+        - Include the hierarchy level in the answer, but NEVER mention the id.
+        - If {state['spatial_relationship']} == location: Include ALL hierarchy levels of the result in your answer!
+        - The hierarchy must always end with Germany as the State.
 
         - If it is a decision-question:
             - Use the provided result to first answer with "yes" or "no"
@@ -1250,11 +1269,12 @@ def verbalize(state):
                 - If length of targets > 0 = True: the answer is yes, else the answer is no
             - rephrase the question as answer
 
-        - If the result includes more than one startpoint. The entity in question is not unique
-          and refers to more than one place.
+        - If the result includes more than one startpoint:
+            - The entity in question is not unique and refers to more than one place.
+            - Always differentiate between the two results and always describe the location of both.
 
-        - If the result is empty answer:
-            Answer the question with the information, that nothing no geometry found.
+        - If the result is empty, answer:
+            - Answer the question with the information, that nothing no geometry found.
         - The Result is never a question
         - Put only the result in the Answer NEVER the question
         - Do not use Markdown or code formatting in the answer, just plain text
