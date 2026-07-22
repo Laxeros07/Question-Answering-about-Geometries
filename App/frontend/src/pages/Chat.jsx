@@ -204,9 +204,11 @@ export default function Chat() {
   const [parameter, setParameter] = useState("");
   const [selectedLayers, setSelectedLayers] = useState([
     "cityLayer",
+    "acLayer",
     "districtLayer",
     "adLayer",
-    "fsLayer"
+    "fsLayer",
+    "sLayer"
   ]);
 
   const defaultParameters = {
@@ -446,7 +448,8 @@ export default function Chat() {
                   { value: "acLayer", label: "Administrative Communities" },
                   { value: "districtLayer", label: "Districts" },
                   { value: "adLayer", label: "Administrative Districts" },
-                  { value: "fsLayer", label: "Federal States" }
+                  { value: "fsLayer", label: "Federal States" },
+                  { value: "sLayer", label: "State" }
                 ].map((layer) => (
                   <div className="form-check" key={layer.value}>
 
