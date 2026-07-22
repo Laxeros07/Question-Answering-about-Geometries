@@ -22,6 +22,7 @@ export default function Map({ mapInstanceRef }) {
     const districtLayer = L.featureGroup().addTo(map);
     const acLayer = L.featureGroup().addTo(map);
     const cityLayer = L.featureGroup().addTo(map);
+    const sLayer = L.featureGroup().addTo(map);
 
     mapInstanceRef.current.layers = {
       cityLayer,
@@ -29,6 +30,7 @@ export default function Map({ mapInstanceRef }) {
       districtLayer,
       adLayer,
       fsLayer,
+      sLayer,
     };
 
     // Base Layer
@@ -49,11 +51,15 @@ export default function Map({ mapInstanceRef }) {
       Districts: districtLayer,
       "Administrative Districts": adLayer,
       "Federal States": fsLayer,
+      State: sLayer,
     };
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
 
     // Fixed z-index for layers
+    map.createPane("S");
+    map.getPane("S").style.zIndex = 390;
+
     map.createPane("F");
     map.getPane("F").style.zIndex = 400;
 
@@ -81,6 +87,7 @@ export default function Map({ mapInstanceRef }) {
         "District",
         "Administrative district",
         "Federal state",
+        "State",
       ];
 
       div.innerHTML =

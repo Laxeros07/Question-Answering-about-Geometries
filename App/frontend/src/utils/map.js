@@ -15,7 +15,9 @@ export function getColor(d) {
           ? "#ffcc00"
           : d === "Federal state" || d === "F"
             ? "#469F4E"
-            : "#fff";
+            : d === "State" || d === "S"
+              ? "#9e9e9e"
+              : "#fff";
 }
 
 // Mapping ID prefixes to readable level names
@@ -31,6 +33,8 @@ export function getLevelName(typeCode) {
       return "AdministrativeDistrict";
     case "F":
       return "FederalState";
+    case "S":
+      return "State";
     default:
       return "Unknown";
   }
@@ -40,7 +44,8 @@ export function getLevelName(typeCode) {
  * Loads the geometries for the given search IDs and adds them to the map.
  */
 export async function loadGeometries(searchIDs, map) {
-  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer } = map.layers;
+  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer, sLayer } =
+    map.layers;
   const data = await fetchGeometries(searchIDs);
 
   data.forEach((item) => {
@@ -92,6 +97,9 @@ export async function loadGeometries(searchIDs, map) {
       case "F":
         fsLayer.addLayer(layer);
         break;
+      case "S":
+        sLayer.addLayer(layer);
+        break;
       default:
         break;
     }
@@ -103,6 +111,7 @@ export async function loadGeometries(searchIDs, map) {
     districtLayer,
     adLayer,
     fsLayer,
+    sLayer,
   ]);
   map.flyToBounds(group.getBounds());
 }
@@ -113,13 +122,14 @@ export async function loadGeometries(searchIDs, map) {
 export function clearGeometries(mapRef) {
   if (!mapRef.current?.layers) return;
 
-  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer } =
+  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer, sLayer } =
     mapRef.current.layers;
   cityLayer.clearLayers();
   acLayer.clearLayers();
   districtLayer.clearLayers();
   adLayer.clearLayers();
   fsLayer.clearLayers();
+  sLayer.clearLayers();
 }
 
 /**

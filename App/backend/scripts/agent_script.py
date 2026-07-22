@@ -126,10 +126,10 @@ instructions = """Analyze the input query and extract the following parameters.
 <spatial_entities>
   <task>Return a list of entity names mentioned in the question.</task>
   <constraints>
-    - A entity name is a proper name of a place in Germany
+    - A entity name is a proper name of a place in Germany or the state Germany itself
     - It can be written in another language
     - If the name is in a different language than German, translate the name to German
-      - (e.g. Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
+      - (e.g. Germany -> Deutschland, Cologne -> Köln, Munich -> München, Bavaria -> Bayern, Aix-la-Chapelle -> Aachen)
     - If there are multiple entities, put the start entity first and then the target entity:
       - e.g. "Is Münster located northeast of Düsseldorf?" -> ["Düsseldorf", "Münster"]
       - e.g. "Does Bocholt lie western of Münster?" -> ["Münster", "Bocholt"]
@@ -150,6 +150,7 @@ instructions = """Analyze the input query and extract the following parameters.
         - "District",
         - "AdministrativeDistrict",
         - "FederalState"
+        - "State"
     - Return one item for every entity in the question.
     - Explicit type in question overrides defaults.
     - Default hierarchy is City.
@@ -159,6 +160,8 @@ instructions = """Analyze the input query and extract the following parameters.
         - Kreis -> District
         - Regierungsbezirk -> AdministrativeDistrict
         - Bundesland -> FederalState
+        - Land/Bundesstaat -> State
+    - The entity Germany has always "State" as hierarchy level
   </constraints>
 </hierarchy>
 
@@ -166,7 +169,7 @@ instructions = """Analyze the input query and extract the following parameters.
   <task>Return the type of the target entity in the question.</task>
   <constraints>
     - Return one of the following types: 
-        City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState
+        City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState < State
     - The target type is what is asked for in the question
     - The default value is City, when no type is mentioned
   </constraints>
@@ -191,7 +194,8 @@ class HierarchyItem(BaseModel):
         "AdministrativeCommunity",
         "District",
         "AdministrativeDistrict",
-        "FederalState"
+        "FederalState",
+        "State"
     ]
 
 class ParameterExtraction(BaseModel):
@@ -236,14 +240,16 @@ HIERARCHY = [
     "AdministrativeCommunity",
     "District",
     "AdministrativeDistrict",
-    "FederalState"
+    "FederalState",
+    "State"
 ]
 HIERARCHY_SHORT = {
     "City": "C",
     "AdministrativeCommunity": "V",
     "District": "D",
     "AdministrativeDistrict": "A",
-    "FederalState": "F"
+    "FederalState": "F",
+    "State": "S"
 }
 
 def get_llm_config(model_name, api_key):
@@ -358,10 +364,12 @@ def extract_parameters_manually(question: str) -> ParameterExtraction:
                 defaults["target_type"] = "District"
             elif "administrative" in func_name:
                 defaults["target_type"] = "AdministrativeDistrict"
-            elif "state" in func_name or "federal" in func_name:
+            elif "federal" or "states" in func_name:
                 defaults["target_type"] = "FederalState"
             elif "city" in func_name or "cities" in func_name:
                 defaults["target_type"] = "City"
+            elif "state" in func_name and "federal" not in func_name:
+                defaults["target_type"] = "State"
             else:
                 defaults["target_type"] = "District"
         parsed = defaults
@@ -1217,7 +1225,8 @@ def verbalize(state):
         Answer in this Language: {state['language']}
 
         Describe all hierarchy levels of the result in the answer. 
-        The hierarchy levels are: City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState.
+        The hierarchy levels are: City < AdministrativeCommunity < District < AdministrativeDistrict < FederalState < State.
+        Everything lies within the Level State.
 
         If language is German, use the following translations for the hierarchy levels:
         - City -> Stadt
@@ -1225,6 +1234,7 @@ def verbalize(state):
         - District -> Kreis
         - AdministrativeDistrict -> Regierungsbezirk
         - FederalState -> Bundesland
+        - State -> Bundesstaat
 
         Rules:
         - If target_total is larger than the number of provided targets, mention that only the first N targets are shown and that additional matches exist.
@@ -1236,7 +1246,9 @@ def verbalize(state):
             - D = District
             - A = Administrative District
             - F = Federal State
-        include the level in the answer but NOT the id
+            - S = State
+        - include the level in the answer but NOT the id
+        - Germany is always on the State level
 
         - If it is a decision-question:
             - Use the provided result to first answer with "yes" or "no"
