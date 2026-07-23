@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import { getColor } from "../utils/map";
+import { getColor, loadGermanyBorder } from "../utils/map";
 
 export default function Map({ mapInstanceRef }) {
   const mapRef = useRef(null);
@@ -22,7 +22,13 @@ export default function Map({ mapInstanceRef }) {
     const districtLayer = L.featureGroup().addTo(map);
     const acLayer = L.featureGroup().addTo(map);
     const cityLayer = L.featureGroup().addTo(map);
-    const sLayer = L.featureGroup().addTo(map);
+
+    // Pane erstellen
+    map.createPane("Germany");
+    map.getPane("Germany").style.zIndex = 390;
+
+    // Layer erstellen
+    const germanyLayer = L.featureGroup().addTo(map);
 
     mapInstanceRef.current.layers = {
       cityLayer,
@@ -30,8 +36,13 @@ export default function Map({ mapInstanceRef }) {
       districtLayer,
       adLayer,
       fsLayer,
-      sLayer,
+      germanyLayer,
     };
+
+    // Germany Borders
+    (async () => {
+      await loadGermanyBorder(map);
+    })();
 
     // Base Layer
     const osm = L.tileLayer(
@@ -46,19 +57,17 @@ export default function Map({ mapInstanceRef }) {
     // Layer Control
     const baseMaps = { OpenStreetMap: osm };
     const overlayMaps = {
+      Germany: germanyLayer,
       Cities: cityLayer,
       "Administrative Communities": acLayer,
       Districts: districtLayer,
       "Administrative Districts": adLayer,
       "Federal States": fsLayer,
-      State: sLayer,
     };
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
 
     // Fixed z-index for layers
-    map.createPane("S");
-    map.getPane("S").style.zIndex = 390;
 
     map.createPane("F");
     map.getPane("F").style.zIndex = 400;
@@ -87,7 +96,6 @@ export default function Map({ mapInstanceRef }) {
         "District",
         "Administrative district",
         "Federal state",
-        "State",
       ];
 
       div.innerHTML =
