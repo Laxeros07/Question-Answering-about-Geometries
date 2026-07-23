@@ -1136,7 +1136,7 @@ def resolve_entity(state):
                 entities.append({
                     "name": entity["start"]["name"],
                     "id": entity["start"]["id"],
-                    "score": entity["start"]["score"],
+                    "score": entity["score"],
                     "hierarchy": hierarchy
                 })
 
@@ -1465,7 +1465,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "How far are the federal states Hessen and Thüringen from each other?"
+    example_question = "Where is Münster located?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
