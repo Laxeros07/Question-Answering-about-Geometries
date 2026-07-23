@@ -1121,31 +1121,49 @@ def resolve_entity(state):
         # For better readability, we format the results into a more structured format for the LLM
         formatted_results = []
 
-        # Check if the result is a list of lists (multiple groups) or a single list
-        if state["result"] and isinstance(state["result"][0], list):
-            result_groups = state["result"]
-        else:
-            result_groups = [state["result"]]
-
-        for index, result_group in enumerate(result_groups):
-            entities = []
-
-            for entity in result_group:
-                hierarchy = list(dict.fromkeys(
-                    t["name"] for t in entity["target"]
-                ))
-
-                entities.append({
+        # Different handling when relationship is touches
+        if state["spatial_relationship"] == "touches":
+            for index, entity in enumerate(state["result"]):
+                formatted_results.append({
+                    "index": index,
                     "name": entity["start"]["name"],
                     "id": entity["start"]["id"],
-                    "score": entity["score"],
-                    "hierarchy": hierarchy
+                    "score": entity["score"]
+                })
+        else:
+
+            # Check if the result is a list of lists (multiple groups) or a single list
+            if state["result"] and isinstance(state["result"][0], list):
+                result_groups = state["result"]
+            else:
+                result_groups = [state["result"]]
+
+            for index, result_group in enumerate(result_groups):
+                entities = []
+
+                for entity in result_group:
+                    hierarchy = list(dict.fromkeys(
+                        t["name"] for t in entity["target"]
+                    ))
+
+                    entities.append({
+                        "name": entity["start"]["name"],
+                        "id": entity["start"]["id"],
+                        "score": entity["score"],
+                        "hierarchy": hierarchy
+                    })
+
+                formatted_results.append({
+                    "index": index,
+                    "entities": entities
                 })
 
-            formatted_results.append({
-                "index": index,
-                "entities": entities
-            })
+        # best_score = max(entity["score"] for entity in formatted_results[0]["entities"])
+
+        # best_entities = [
+        #     entity for entity in formatted_results[0]["entities"]
+        #     if entity["score"] == best_score
+        # ]
 
         prompt = f"""
         You are a strict entity selection system.
