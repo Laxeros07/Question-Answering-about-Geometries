@@ -157,6 +157,15 @@ export async function fetchGeometries(searchIDs) {
 /**
  * Exports a Leaflet layer or all map layers as a GeoJSON file.
  */
+const LAYER_DISPLAY_NAMES = {
+  cityLayer: "Cities",
+  acLayer: "Administrative Communities",
+  districtLayer: "Districts",
+  adLayer: "Administrative Districts",
+  fsLayer: "Federal States",
+  sLayer: "States",
+};
+
 export function exportLayerToGeoJSON(
   layerOrKey,
   map,
@@ -164,15 +173,23 @@ export function exportLayerToGeoJSON(
   geojsonOverride = null,
 ) {
   let layer;
+  let layerKey;
 
   if (typeof layerOrKey === "string") {
     layer = map.layers[layerOrKey];
+    layerKey = layerOrKey;
   } else {
     layer = layerOrKey;
+    layerKey = Object.keys(map.layers || {}).find(
+      (key) => map.layers[key] === layer,
+    );
   }
 
+  const layerName =
+    LAYER_DISPLAY_NAMES[layerKey] || layerKey || "Unknown layer";
+
   if (!layer || layer.getLayers().length === 0) {
-    alert("Keine Daten in diesem Layer zum Exportieren vorhanden.");
+    alert(`${layerName}: No data for export in this layer.`);
     return;
   }
 

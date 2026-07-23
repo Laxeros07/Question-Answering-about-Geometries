@@ -615,6 +615,7 @@ def build_within_sub_class(state):
             WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
             ELSE 0
         END AS score
+        ORDER BY score DESC
 
         WITH start, score, collect(DISTINCT {{
             id: target.ID,
@@ -675,6 +676,7 @@ def build_touches_query(state):
             WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
             ELSE 0
         END AS score
+        ORDER BY score DESC
 
         {within_query}
 
@@ -1098,93 +1100,151 @@ def execute_query(state):
 
 # resolve entity
 def resolve_entity(state):
-
-    # If there is only one result or if its empty, return it directly
-    if len(state["result"]) == 1 or len(state["result"]) == 0:
+    # Return result, when it is empty
+    if len(state["result"]) == 0:
         return state
+
+    # If there are more than one result, the LLM decides which results to keep based on the score and hierarchy information
+    if len(state["result"]) == 1:
+        # Normalize results to a list of results for consistency
+        if isinstance(state["result"][0], list):
+            state["result"] = state["result"][0]
+
+    elif len(state["result"]) > 1:
     
-    # Printable JSON
-    hierarchy = ", ".join(
-        f"{item.entity_name} ({item.hierarchy})"
-        for item in state["hierarchy"]
-    )
+        # Printable JSON
+        hierarchy = ", ".join(
+            f"{item.entity_name} ({item.hierarchy})"
+            for item in state["hierarchy"]
+        )
 
-    results = []
-    for i, r in enumerate(state["result"]):
-        item = r if isinstance(r, dict) else {"result": r}
-        results.append({
-            "index": i,
-            **item
-        })
+        # For better readability, we format the results into a more structured format for the LLM
+        formatted_results = []
 
-    prompt = f"""
-    You are a selection system for entity disambiguation.
+        # Different handling when relationship is touches
+        if state["spatial_relationship"] == "touches":
+            for index, entity in enumerate(state["result"]):
+                formatted_results.append({
+                    "index": index,
+                    "name": entity["start"]["name"],
+                    "id": entity["start"]["id"],
+                    "score": entity["score"]
+                })
+        else:
 
-    IMPORTANT:
-    You do NOT perform semantic reasoning or guessing.
-    You select the result based on the provided score and the context of the question.
+            # Check if the result is a list of lists (multiple groups) or a single list
+            if state["result"] and isinstance(state["result"][0], list):
+                result_groups = state["result"]
+            else:
+                result_groups = [state["result"]]
 
-    Each result has a "priority score":
-    - score 2 = exact match
-    - score 1 = match starts with the entity name
-    - score 0 = match only contains entity name
+            for index, result_group in enumerate(result_groups):
+                entities = []
 
-    RULES:
-    1. Prefer higher score values.
-    2. If multiple entities have the same highest score, you may return multiple indices.
-    3. Do NOT use substring reasoning or external knowledge.
-    4. Do NOT assume that similar names are related.
-    5. If the user limits the question to a specific hierarchy level, use the information provided in the targets to decide.
-        e.g. "Where is Münster in Bayern located?" -> results where the target holds Bayern  
+                for entity in result_group:
+                    hierarchy = list(dict.fromkeys(
+                        t["name"] for t in entity["target"]
+                    ))
 
-    Examples:
-    - "Münster" is NOT "Neumünster"
-    - Only choose entities explicitly matching the query or best scored candidates
+                    entities.append({
+                        "name": entity["start"]["name"],
+                        "id": entity["start"]["id"],
+                        "score": entity["score"],
+                        "hierarchy": hierarchy
+                    })
 
-    OUTPUT FORMAT:
-    {{
-        "reasoning": "Explain your reasoning for the selection in plain text",
-        "indices": [0, 2]
-    }}
-    - Use the result list
-    - Return a single index in a list if one best match exists
-    - Return a list of indices if multiple candidates share the best score
-    - Each result contains a field "index".
-    - Do NOT count the list yourself.
-    - Copy the value of the "index" field exactly as it appears.
-    - Never infer or renumber indices.
+                formatted_results.append({
+                    "index": index,
+                    "entities": entities
+                })
 
-    Question:
-    {state["question"]}
+        # best_score = max(entity["score"] for entity in formatted_results[0]["entities"])
 
-    Spatial entities of question:
-    {state["spatial_entities"]}
+        # best_entities = [
+        #     entity for entity in formatted_results[0]["entities"]
+        #     if entity["score"] == best_score
+        # ]
 
-    Results (sorted by score descending):
-    {results}
+        prompt = f"""
+        You are a strict entity selection system.
+        Your task is NOT to answer the user's question.
 
-    Hierarchies:
-    {hierarchy}
-    """
-    indices = llm.invoke(prompt).content
-    res = json.loads(indices)
-    # Only save the chosen results based on the indices returned by the LLM
-    # Different handling depending on whether the result is a list or a single object
-    if type(state["result"][0]) != list:
-        state["result"] = [state["result"][i] for i in res["indices"]]
-    else:
-        result = []
-        for i in res["indices"]:
-            result.append({
-                "start": state["result"][0][0]["start"],
-                "target": [state["result"][0][1]["start"]]
-            })
-        state["result"] = result
+        Your only task is to determine which candidate(s) correspond to the spatial entity mentioned in the question.
 
-    state["reasoning"] = res["reasoning"]
+        The targets, geometries and relationships are NOT the answer.
+        They are only context that may help identify the correct entity.
+
+        IMPORTANT:
+        You do NOT perform semantic reasoning.
+        You only use:
+        - the provided score
+        - explicit constraints from the question
+        - hierarchy information inside the results
+
+        Each result has a priority score:
+        - score 2 = exact name match
+        - score 1 = name starts with entity name
+        - score 0 = name only contains entity name
+
+        Selection rules:
+
+        1. Extract explicit constraints from the question first.
+        Examples:
+        - "Münster in Bayern" means the selected entity must have Bayern in its hierarchy.
+
+        2. Remove all candidates that violate these constraints.
+
+        3. Among the remaining candidates, select the highest score.
+
+        4. If multiple entities share the highest score and none can be eliminated using the question, you MUST return all of their indices.
+
+        5. Never keep a candidate only because it has the same name.
+        Example:
+        "Münster in Bayern"
+        -> Münster in Nordrhein-Westfalen is invalid.
+
+        6. Do not use external geographic knowledge.
+
+        7. Do NOT return no index.
+
+        OUTPUT:
+        {{
+            "reasoning": "...",
+            "indices": [...]
+        }}
+
+        Question:
+        {state["question"]}
+
+        Results:
+        {formatted_results}
+
+        Hierarchy:
+        {hierarchy}
+        """
+        indices = llm.invoke(prompt).content
+        res = json.loads(indices)
+        # Only save the chosen results based on the indices returned by the LLM
+        # Different handling depending on whether the result is a list or a single object
+        if type(state["result"][0]) != list:
+            state["result"] = [state["result"][i] for i in res["indices"]]
+        else:
+            result = []
+            for i in res["indices"]:
+                result.append({
+                    "start": state["result"][i][0]["start"],
+                    "target": [state["result"][i][1]["start"]]
+                })
+            state["result"] = result
+
+        state["reasoning"] = res["reasoning"]
 
     # adds the distance to the result (only works with two entities)
     if state["distance_between"] == True:
+        state["result"] = [{
+            "start": state["result"][0]["start"],
+            "target": [state["result"][1]["start"]]
+        }]
         state["result"] = srf.calculate_distances(state["result"])
 
     return state
@@ -1208,11 +1268,13 @@ def verbalize(state):
         """
     else:
 
-        # Only use the first 50 targets for verbalization, but keep track of how many are left
+        # Only use the first 50 targets for verbalization, but also mention the total number of targets in the answer
         prompt_result = copy.deepcopy(state["result"])
         for r in prompt_result:
-            r["target_total"] = len(r["target"])
-            r["target"] = r["target"][:50]
+            if not isinstance(r, list):
+                if len(r["target"]) > 50:
+                    r["target_total"] = len(r["target"])
+                    r["target"] = r["target"][:50]
         
         # Regular answer
         prompt = f"""
@@ -1430,7 +1492,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities are in Bayern?"
+    example_question = "Which cities lie next to Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
