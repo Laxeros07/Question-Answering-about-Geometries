@@ -615,6 +615,7 @@ def build_within_sub_class(state):
             WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
             ELSE 0
         END AS score
+        ORDER BY score DESC
 
         WITH start, score, collect(DISTINCT {{
             id: target.ID,
@@ -675,6 +676,7 @@ def build_touches_query(state):
             WHEN toLower(start.Name) STARTS WITH toLower('{name}') THEN 1
             ELSE 0
         END AS score
+        ORDER BY score DESC
 
         {within_query}
 
@@ -1147,6 +1149,12 @@ def resolve_entity(state):
 
         prompt = f"""
         You are a strict entity selection system.
+        Your task is NOT to answer the user's question.
+
+        Your only task is to determine which candidate(s) correspond to the spatial entity mentioned in the question.
+
+        The targets, geometries and relationships are NOT the answer.
+        They are only context that may help identify the correct entity.
 
         IMPORTANT:
         You do NOT perform semantic reasoning.
@@ -1170,8 +1178,7 @@ def resolve_entity(state):
 
         3. Among the remaining candidates, select the highest score.
 
-        4. Return multiple indices only if multiple candidates satisfy ALL constraints
-        and have the same score.
+        4. If multiple entities share the highest score and none can be eliminated using the question, you MUST return all of their indices.
 
         5. Never keep a candidate only because it has the same name.
         Example:
@@ -1179,6 +1186,8 @@ def resolve_entity(state):
         -> Münster in Nordrhein-Westfalen is invalid.
 
         6. Do not use external geographic knowledge.
+
+        7. Do NOT return no index.
 
         OUTPUT:
         {{
@@ -1465,7 +1474,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Where is Münster located?"
+    example_question = "Which cities lie next to Münster?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
