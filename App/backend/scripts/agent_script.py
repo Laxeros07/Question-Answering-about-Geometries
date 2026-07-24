@@ -1121,7 +1121,7 @@ def resolve_entity(state):
         # For better readability, we format the results into a more structured format for the LLM
         formatted_results = []
 
-        # Different handling when relationship is touches
+        # Different handling for the different spatial_relationships
         if state["spatial_relationship"] == "touches":
             for index, entity in enumerate(state["result"]):
                 formatted_results.append({
@@ -1130,6 +1130,20 @@ def resolve_entity(state):
                     "id": entity["start"]["id"],
                     "score": entity["score"]
                 })
+
+        elif state["spatial_relationship"] in ["within", "location"]:
+            for index, entity in enumerate(state["result"]):
+                hierarchy = list(dict.fromkeys(
+                    t["name"] for t in entity["target"]
+                ))
+                formatted_results.append({
+                    "index": index,
+                    "name": entity["start"]["name"],
+                    "id": entity["start"]["id"],
+                    "score": entity["score"],
+                    "hierarchy": hierarchy
+                })
+
         else:
 
             # Check if the result is a list of lists (multiple groups) or a single list
@@ -1326,7 +1340,7 @@ def verbalize(state):
             - A = AdministrativeDistrict
             - F = FederalState
             - S = State
-        - Include the hierarchy level in the answer, but NEVER mention the id.
+        - Include the hierarchy levels of the result in the answer, but NEVER mention the id.
         - If {state['spatial_relationship']} == location: Include ALL hierarchy levels of the result in your answer!
         - The hierarchy must always end with Germany as the State.
 
@@ -1492,7 +1506,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie next to Münster?"
+    example_question = "Where is Münster located?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
