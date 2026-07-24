@@ -15,9 +15,7 @@ export function getColor(d) {
           ? "#ffcc00"
           : d === "Federal state" || d === "F"
             ? "#469F4E"
-            : d === "State" || d === "S"
-              ? "#9e9e9e"
-              : "#fff";
+            : "#fff";
 }
 
 // Mapping ID prefixes to readable level names
@@ -33,8 +31,6 @@ export function getLevelName(typeCode) {
       return "AdministrativeDistrict";
     case "F":
       return "FederalState";
-    case "S":
-      return "State";
     default:
       return "Unknown";
   }
@@ -44,8 +40,7 @@ export function getLevelName(typeCode) {
  * Loads the geometries for the given search IDs and adds them to the map.
  */
 export async function loadGeometries(searchIDs, map) {
-  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer, sLayer } =
-    map.layers;
+  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer } = map.layers;
   const data = await fetchGeometries(searchIDs);
 
   data.forEach((item) => {
@@ -97,9 +92,6 @@ export async function loadGeometries(searchIDs, map) {
       case "F":
         fsLayer.addLayer(layer);
         break;
-      case "S":
-        sLayer.addLayer(layer);
-        break;
       default:
         break;
     }
@@ -111,7 +103,6 @@ export async function loadGeometries(searchIDs, map) {
     districtLayer,
     adLayer,
     fsLayer,
-    sLayer,
   ]);
   map.flyToBounds(group.getBounds());
 }
@@ -122,14 +113,13 @@ export async function loadGeometries(searchIDs, map) {
 export function clearGeometries(mapRef) {
   if (!mapRef.current?.layers) return;
 
-  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer, sLayer } =
+  const { cityLayer, acLayer, districtLayer, adLayer, fsLayer } =
     mapRef.current.layers;
   cityLayer.clearLayers();
   acLayer.clearLayers();
   districtLayer.clearLayers();
   adLayer.clearLayers();
   fsLayer.clearLayers();
-  sLayer.clearLayers();
 }
 
 /**
@@ -229,4 +219,28 @@ export function exportLayerToGeoJSON(
 
     alert("An error occurred during export.");
   }
+}
+
+// Get GErmany Borders
+export async function loadGermanyBorder(map) {
+  const res = await fetch(`${API_BASE_URL}/api/geometries?ids=S1`);
+  const data = await res.json();
+
+  const germany = data.geometries[0];
+
+  if (!germany) {
+    console.error("Germany geometry not found");
+    return;
+  }
+
+  const layer = L.geoJSON(germany.geojson, {
+    style: {
+      color: "#7a7a7a",
+      weight: 3,
+      fillOpacity: 0,
+    },
+    pane: "Germany",
+  });
+
+  map.layers.germanyLayer.addLayer(layer);
 }
