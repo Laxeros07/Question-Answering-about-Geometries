@@ -78,8 +78,19 @@ instructions = """Analyze the input query and extract the following parameters.
       - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to, surrounded by) can include (north, south, east, west)
       - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without "next to")) or radius
       - "None": if none of the above apply
-      Example "touches": Which cities lie directly northern of Münster?
-      Example "relates": Which cities lie northern of Münster?
+      Think carefully between touches and relates! Use the following examples:
+      - Examples "touches": 
+        - Which cities lie directly north of Hamburg?
+        - Which municipalities are directly south of Münster?
+        - Which districts border Dortmund?
+        - Which cities are next to Cologne?
+      - Example "relates":
+        - Which cities lie north of Hamburg?
+        - Which cities are north of Hamburg?
+        - Which cities are southern of Münster?
+        - Which districts lie east of Cologne?
+        - Which cities are within 10 km of Hamburg?
+        - How far is Münster from Dortmund?
   </constraints>
 </relationship>
 
@@ -551,6 +562,24 @@ def build_within_super_class(state):
     target = state["target_type"]
     name = get_source_name(state)
 
+    within_query = ""
+    # Trying to determine whether the user asked for a higher level
+    if len(state["spatial_entities"]) > 1 and state["decision_question"] == False:
+        test_if_other_hierarchy = False
+        for entity in state["hierarchy"]:
+            if entity.hierarchy != source:
+                test_if_other_hierarchy = True
+                break
+        if test_if_other_hierarchy:
+            within_query = f"""
+                MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+                MATCH path =
+                    (start)-[:hasFootprint]->(:Geometry)
+                    -[:within*1..]->(:Geometry)
+                    <-[:hasFootprint]-(:{state["hierarchy"][1].hierarchy} {{Name: '{state["hierarchy"][1].entity_name}'}})
+            """
+
     query = f"""
         MATCH p = (start:{source})
         -[]->
@@ -576,6 +605,8 @@ def build_within_super_class(state):
         MATCH (obj)-[:hasFootprint]->(n)
         WHERE NOT obj:Geometry
 
+        {within_query}
+
         WITH start, score, collect(DISTINCT {{
             id: obj.ID,
             name: obj.Name
@@ -597,6 +628,24 @@ def build_within_sub_class(state):
     target = state["target_type"]
     name = get_source_name(state)
 
+    within_query = ""
+    # Trying to determine whether the user asked for a higher level
+    if len(state["spatial_entities"]) > 1 and state["decision_question"] == False:
+        test_if_other_hierarchy = False
+        for entity in state["hierarchy"]:
+            if entity.hierarchy != source:
+                test_if_other_hierarchy = True
+                break
+        if test_if_other_hierarchy:
+            within_query = f"""
+                MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+                MATCH path =
+                    (start)-[:hasFootprint]->(:Geometry)
+                    -[:within*1..]->(:Geometry)
+                    <-[:hasFootprint]-(:{state["hierarchy"][1].hierarchy} {{Name: '{state["hierarchy"][1].entity_name}'}})
+            """
+
     query = f"""
         MATCH (start:{source})
         -[:hasFootprint]->
@@ -616,6 +665,8 @@ def build_within_sub_class(state):
             ELSE 0
         END AS score
         ORDER BY score DESC
+
+        {within_query}
 
         WITH start, score, collect(DISTINCT {{
             id: target.ID,
@@ -732,20 +783,6 @@ def build_direction_query(state):
         e1 = state["spatial_entities"][0]
         e2 = state["spatial_entities"][1]
 
-        # Find out whether the user asked for a higher hierarchy than the source entity
-        # other_hierarchy = ""
-        # for entity in state["hierarchy"]:
-        #     if entity.hierarchy == state["target_type"]:
-        #         other_hierarchy = f"""
-        #             MATCH (start)-[:hasFootprint]->(g:Geometry)
-
-        #             MATCH path =
-        #                 (start)-[:hasFootprint]->(:Geometry)
-        #                 -[:within*1..]->(:Geometry)
-        #                 <-[:hasFootprint]-(:{entity.hierarchy} {{Name: '{entity.entity_name}'}})
-        #         """
-        #         break
-
         query = f"""
             MATCH
                 (n1:{source}),
@@ -829,7 +866,7 @@ def build_direction_query(state):
     
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = records
+        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
         records = state["result"]
 
@@ -862,8 +899,8 @@ def build_direction_query(state):
         # Now calculate the cardinal direction query using the retrieved ID
         # If there are multiple candidates, choose the first one
         query = srf.calculate_cardinal_direction(
-            records[0]["result"]["start"]["id"], 
-            records[0]["result"]["start"]["name"], 
+            records[0]["start"]["id"], 
+            records[0]["start"]["name"], 
             state["target_type"], 
             direction
         )
@@ -1131,7 +1168,7 @@ def resolve_entity(state):
                     "score": entity["score"]
                 })
 
-        elif state["spatial_relationship"] in ["within", "location"]:
+        elif state["spatial_relationship"] in ["within", "location"] or select_relates_type(state) == "direction":
             for index, entity in enumerate(state["result"]):
                 hierarchy = list(dict.fromkeys(
                     t["name"] for t in entity["target"]
@@ -1147,10 +1184,11 @@ def resolve_entity(state):
         else:
 
             # Check if the result is a list of lists (multiple groups) or a single list
-            if state["result"] and isinstance(state["result"][0], list):
-                result_groups = state["result"]
-            else:
-                result_groups = [state["result"]]
+            # if state["result"] and isinstance(state["result"][0], list):
+            #     result_groups = state["result"]
+            # else:
+            #     result_groups = [state["result"]]
+            result_groups = [state["result"]]
 
             for index, result_group in enumerate(result_groups):
                 entities = []
@@ -1506,7 +1544,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Where is Münster located?"
+    example_question = "Which cities lie north of Hamburg?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
