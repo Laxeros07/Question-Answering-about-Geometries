@@ -78,8 +78,19 @@ instructions = """Analyze the input query and extract the following parameters.
       - "touches": geographic neighbors, nearest/closest entities (lies next to, is next to, touches, located directly, directly next to, surrounded by) can include (north, south, east, west)
       - "relates": generic relation, cardinal direction or distance (how far, lies northern/southern/eastern/western of, lies (without "next to")) or radius
       - "None": if none of the above apply
-      Example "touches": Which cities lie directly northern of Münster?
-      Example "relates": Which cities lie northern of Münster?
+      Think carefully between touches and relates! Use the following examples:
+      - Examples "touches": 
+        - Which cities lie directly north of Hamburg?
+        - Which municipalities are directly south of Münster?
+        - Which districts border Dortmund?
+        - Which cities are next to Cologne?
+      - Example "relates":
+        - Which cities lie north of Hamburg?
+        - Which cities are north of Hamburg?
+        - Which cities are southern of Münster?
+        - Which districts lie east of Cologne?
+        - Which cities are within 10 km of Hamburg?
+        - How far is Münster from Dortmund?
   </constraints>
 </relationship>
 
@@ -551,6 +562,24 @@ def build_within_super_class(state):
     target = state["target_type"]
     name = get_source_name(state)
 
+    within_query = ""
+    # Trying to determine whether the user asked for a higher level
+    if len(state["spatial_entities"]) > 1 and state["decision_question"] == False:
+        test_if_other_hierarchy = False
+        for entity in state["hierarchy"]:
+            if entity.hierarchy != source:
+                test_if_other_hierarchy = True
+                break
+        if test_if_other_hierarchy:
+            within_query = f"""
+                MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+                MATCH path =
+                    (start)-[:hasFootprint]->(:Geometry)
+                    -[:within*1..]->(:Geometry)
+                    <-[:hasFootprint]-(:{state["hierarchy"][1].hierarchy} {{Name: '{state["hierarchy"][1].entity_name}'}})
+            """
+
     query = f"""
         MATCH p = (start:{source})
         -[]->
@@ -576,6 +605,8 @@ def build_within_super_class(state):
         MATCH (obj)-[:hasFootprint]->(n)
         WHERE NOT obj:Geometry
 
+        {within_query}
+
         WITH start, score, collect(DISTINCT {{
             id: obj.ID,
             name: obj.Name
@@ -597,6 +628,24 @@ def build_within_sub_class(state):
     target = state["target_type"]
     name = get_source_name(state)
 
+    within_query = ""
+    # Trying to determine whether the user asked for a higher level
+    if len(state["spatial_entities"]) > 1 and state["decision_question"] == False:
+        test_if_other_hierarchy = False
+        for entity in state["hierarchy"]:
+            if entity.hierarchy != source:
+                test_if_other_hierarchy = True
+                break
+        if test_if_other_hierarchy:
+            within_query = f"""
+                MATCH (start)-[:hasFootprint]->(g:Geometry)
+
+                MATCH path =
+                    (start)-[:hasFootprint]->(:Geometry)
+                    -[:within*1..]->(:Geometry)
+                    <-[:hasFootprint]-(:{state["hierarchy"][1].hierarchy} {{Name: '{state["hierarchy"][1].entity_name}'}})
+            """
+
     query = f"""
         MATCH (start:{source})
         -[:hasFootprint]->
@@ -616,6 +665,8 @@ def build_within_sub_class(state):
             ELSE 0
         END AS score
         ORDER BY score DESC
+
+        {within_query}
 
         WITH start, score, collect(DISTINCT {{
             id: target.ID,
@@ -732,20 +783,6 @@ def build_direction_query(state):
         e1 = state["spatial_entities"][0]
         e2 = state["spatial_entities"][1]
 
-        # Find out whether the user asked for a higher hierarchy than the source entity
-        # other_hierarchy = ""
-        # for entity in state["hierarchy"]:
-        #     if entity.hierarchy == state["target_type"]:
-        #         other_hierarchy = f"""
-        #             MATCH (start)-[:hasFootprint]->(g:Geometry)
-
-        #             MATCH path =
-        #                 (start)-[:hasFootprint]->(:Geometry)
-        #                 -[:within*1..]->(:Geometry)
-        #                 <-[:hasFootprint]-(:{entity.hierarchy} {{Name: '{entity.entity_name}'}})
-        #         """
-        #         break
-
         query = f"""
             MATCH
                 (n1:{source}),
@@ -829,21 +866,22 @@ def build_direction_query(state):
     
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = records
+        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
         records = state["result"]
 
     if state["decision_question"] == True:
         # When it is a decision question, srf.calculate_cardinal_direction() does not need to be called
         # Compare only chosen entities
+        # If there are multiple candidates, choose the first one
         compare_direction = srf.get_cardinal_direction(
-            tuple(map(float, records[0]["result"]["start"]["centroid"][7:-1].split())), 
-            tuple(map(float, records[0]["result"]["target"][0]["centroid"][7:-1].split()))
+            tuple(map(float, records[0]["start"]["centroid"][7:-1].split())), 
+            tuple(map(float, records[0]["target"][0]["centroid"][7:-1].split()))
         )
 
         query = f"""
-                MATCH (start:{source} {{ID: '{records[0]["result"]["start"]["id"]}'}})
-                MATCH (target:{source} {{ID: '{records[0]["result"]["target"][0]["id"]}'}})
+                MATCH (start:{source} {{ID: '{records[0]["start"]["id"]}'}})
+                MATCH (target:{source} {{ID: '{records[0]["target"][0]["id"]}'}})
 
                 RETURN {{
                     start: {{
@@ -862,8 +900,8 @@ def build_direction_query(state):
         # Now calculate the cardinal direction query using the retrieved ID
         # If there are multiple candidates, choose the first one
         query = srf.calculate_cardinal_direction(
-            records[0]["result"]["start"]["id"], 
-            records[0]["result"]["start"]["name"], 
+            records[0]["start"]["id"], 
+            records[0]["start"]["name"], 
             state["target_type"], 
             direction
         )
@@ -919,13 +957,14 @@ def build_radius_query(state):
 
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = records
+        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
         records = state["result"]
     
     # Now calculate the radius query using the retrieved ID
+    # If there are multiple candidates, choose the first one
     query = srf.calculate_radius(
-        records[0]["result"]["start"]["id"], 
+        records[0]["start"]["id"], 
         name, 
         state["target_type"], 
         distance
@@ -1061,7 +1100,7 @@ def build_radius_and_direction_query(state):
 
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = records
+        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
         records = state["result"]
 
@@ -1121,7 +1160,7 @@ def resolve_entity(state):
         # For better readability, we format the results into a more structured format for the LLM
         formatted_results = []
 
-        # Different handling when relationship is touches
+        # Different handling for the different spatial_relationships
         if state["spatial_relationship"] == "touches":
             for index, entity in enumerate(state["result"]):
                 formatted_results.append({
@@ -1130,13 +1169,35 @@ def resolve_entity(state):
                     "id": entity["start"]["id"],
                     "score": entity["score"]
                 })
+
+        elif state["spatial_relationship"] in ["within", "location"] or select_relates_type(state) in ["direction", "radius"]:
+            if not state["decision_question"] and not select_relates_type(state) == "direction":
+                for index, entity in enumerate(state["result"]):
+                    hierarchy = list(dict.fromkeys(
+                        t["name"] for t in entity["target"]
+                    ))
+                    formatted_results.append({
+                        "index": index,
+                        "name": entity["start"]["name"],
+                        "id": entity["start"]["id"],
+                        "score": entity["score"],
+                        "hierarchy": hierarchy
+                    })
+            else:
+                for index, entity in enumerate(state["result"]):
+                    formatted_results.append({
+                        "index": index,
+                        **entity
+                    })
+
         else:
 
             # Check if the result is a list of lists (multiple groups) or a single list
-            if state["result"] and isinstance(state["result"][0], list):
-                result_groups = state["result"]
-            else:
-                result_groups = [state["result"]]
+            # if state["result"] and isinstance(state["result"][0], list):
+            #     result_groups = state["result"]
+            # else:
+            #     result_groups = [state["result"]]
+            result_groups = state["result"]
 
             for index, result_group in enumerate(result_groups):
                 entities = []
@@ -1149,7 +1210,7 @@ def resolve_entity(state):
                     entities.append({
                         "name": entity["start"]["name"],
                         "id": entity["start"]["id"],
-                        "score": entity["score"],
+                        "score": entity["start"]["score"],
                         "hierarchy": hierarchy
                     })
 
@@ -1241,10 +1302,10 @@ def resolve_entity(state):
 
     # adds the distance to the result (only works with two entities)
     if state["distance_between"] == True:
-        state["result"] = [{
-            "start": state["result"][0]["start"],
-            "target": [state["result"][1]["start"]]
-        }]
+        # state["result"] = [{
+        #     "start": state["result"][0]["start"],
+        #     "target": [state["result"][1]["start"]]
+        # }]
         state["result"] = srf.calculate_distances(state["result"])
 
     return state
@@ -1326,7 +1387,7 @@ def verbalize(state):
             - A = AdministrativeDistrict
             - F = FederalState
             - S = State
-        - Include the hierarchy level in the answer, but NEVER mention the id.
+        - Include the hierarchy levels of the result in the answer, but NEVER mention the id.
         - If {state['spatial_relationship']} == location: Include ALL hierarchy levels of the result in your answer!
         - The hierarchy must always end with Germany as the State.
 
@@ -1492,7 +1553,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie next to Münster?"
+    example_question = "Which cities lie northern 10km around Siegburg?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
