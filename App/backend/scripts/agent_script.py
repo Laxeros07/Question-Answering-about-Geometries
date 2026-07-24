@@ -1197,7 +1197,7 @@ def resolve_entity(state):
             #     result_groups = state["result"]
             # else:
             #     result_groups = [state["result"]]
-            result_groups = [state["result"]]
+            result_groups = state["result"]
 
             for index, result_group in enumerate(result_groups):
                 entities = []
@@ -1210,7 +1210,7 @@ def resolve_entity(state):
                     entities.append({
                         "name": entity["start"]["name"],
                         "id": entity["start"]["id"],
-                        "score": entity["score"],
+                        "score": entity["start"]["score"],
                         "hierarchy": hierarchy
                     })
 
@@ -1302,10 +1302,10 @@ def resolve_entity(state):
 
     # adds the distance to the result (only works with two entities)
     if state["distance_between"] == True:
-        state["result"] = [{
-            "start": state["result"][0]["start"],
-            "target": [state["result"][1]["start"]]
-        }]
+        # state["result"] = [{
+        #     "start": state["result"][0]["start"],
+        #     "target": [state["result"][1]["start"]]
+        # }]
         state["result"] = srf.calculate_distances(state["result"])
 
     return state
@@ -1553,7 +1553,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie 10km around Selm?"
+    example_question = "What is the distance between Bocholt and Selm?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
