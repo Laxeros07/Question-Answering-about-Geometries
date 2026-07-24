@@ -1,19 +1,19 @@
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
-export default function Layout({ children, title}) {
+export default function Layout({ children }) {
   return (
-    <>
+    <div className="layout">
       {/* NAVBAR */}
       <Navbar />
 
       {/* CONTENT */}
-      <div className="container" style={{ marginTop: "80px" }}>
+      <main className="container flex-grow-1" style={{ marginTop: "80px" }}>
         {children}
-      </div>
+      </main>
 
       {/* FOOTER */}
       <Footer />
-    </>
+    </div>
   );
 }
