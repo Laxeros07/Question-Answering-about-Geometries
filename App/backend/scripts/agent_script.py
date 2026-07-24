@@ -957,13 +957,14 @@ def build_radius_query(state):
 
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = records
+        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
         records = state["result"]
     
     # Now calculate the radius query using the retrieved ID
+    # If there are multiple candidates, choose the first one
     query = srf.calculate_radius(
-        records[0]["result"]["start"]["id"], 
+        records[0]["start"]["id"], 
         name, 
         state["target_type"], 
         distance
@@ -1099,7 +1100,7 @@ def build_radius_and_direction_query(state):
 
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = records
+        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
         records = state["result"]
 
@@ -1109,7 +1110,7 @@ def build_radius_and_direction_query(state):
     
     # Now calculate the radius query using the retrieved ID
     query = srf.calculate_radius(
-        records[0]["result"]["start"]["id"],
+        records[0]["start"]["id"],
         name, 
         state["target_type"], 
         distance, 
@@ -1169,7 +1170,7 @@ def resolve_entity(state):
                     "score": entity["score"]
                 })
 
-        elif state["spatial_relationship"] in ["within", "location"] or select_relates_type(state) == "direction":
+        elif state["spatial_relationship"] in ["within", "location"] or select_relates_type(state) in ["direction", "radius"]:
             if not state["decision_question"] and not select_relates_type(state) == "direction":
                 for index, entity in enumerate(state["result"]):
                     hierarchy = list(dict.fromkeys(
@@ -1552,7 +1553,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Does Rheinstetten lie southern of Altenstadt?"
+    example_question = "Which cities lie 10km around Selm?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
