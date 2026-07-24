@@ -873,14 +873,15 @@ def build_direction_query(state):
     if state["decision_question"] == True:
         # When it is a decision question, srf.calculate_cardinal_direction() does not need to be called
         # Compare only chosen entities
+        # If there are multiple candidates, choose the first one
         compare_direction = srf.get_cardinal_direction(
-            tuple(map(float, records[0]["result"]["start"]["centroid"][7:-1].split())), 
-            tuple(map(float, records[0]["result"]["target"][0]["centroid"][7:-1].split()))
+            tuple(map(float, records[0]["start"]["centroid"][7:-1].split())), 
+            tuple(map(float, records[0]["target"][0]["centroid"][7:-1].split()))
         )
 
         query = f"""
-                MATCH (start:{source} {{ID: '{records[0]["result"]["start"]["id"]}'}})
-                MATCH (target:{source} {{ID: '{records[0]["result"]["target"][0]["id"]}'}})
+                MATCH (start:{source} {{ID: '{records[0]["start"]["id"]}'}})
+                MATCH (target:{source} {{ID: '{records[0]["target"][0]["id"]}'}})
 
                 RETURN {{
                     start: {{
@@ -1169,17 +1170,24 @@ def resolve_entity(state):
                 })
 
         elif state["spatial_relationship"] in ["within", "location"] or select_relates_type(state) == "direction":
-            for index, entity in enumerate(state["result"]):
-                hierarchy = list(dict.fromkeys(
-                    t["name"] for t in entity["target"]
-                ))
-                formatted_results.append({
-                    "index": index,
-                    "name": entity["start"]["name"],
-                    "id": entity["start"]["id"],
-                    "score": entity["score"],
-                    "hierarchy": hierarchy
-                })
+            if not state["decision_question"] and not select_relates_type(state) == "direction":
+                for index, entity in enumerate(state["result"]):
+                    hierarchy = list(dict.fromkeys(
+                        t["name"] for t in entity["target"]
+                    ))
+                    formatted_results.append({
+                        "index": index,
+                        "name": entity["start"]["name"],
+                        "id": entity["start"]["id"],
+                        "score": entity["score"],
+                        "hierarchy": hierarchy
+                    })
+            else:
+                for index, entity in enumerate(state["result"]):
+                    formatted_results.append({
+                        "index": index,
+                        **entity
+                    })
 
         else:
 
@@ -1544,7 +1552,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie north of Hamburg?"
+    example_question = "Does Rheinstetten lie southern of Altenstadt?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
