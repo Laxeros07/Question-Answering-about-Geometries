@@ -1,27 +1,44 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout main {
+  flex: 1;
+}
+
 .footer a {
   color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
   transition: all 0.2s ease;
 }
 
-/* Hover für normale Links + React Router Links */
+/* Hover effect for regular links and React Router links */
 .footer a:hover,
 .footer .nav-link:hover {
   color: #007bff !important;
   transform: translateY(-2px);
 }
 
-/* Icons etwas smoother */
+/* Smooth transition for icons */
 .footer i {
   transition: all 0.2s ease;
 }
 
-/* Optional: Icon Hover leicht größer */
+/* Slightly enlarge icons on hover */
 .footer a:hover i {
   transform: scale(1.15);
 }
 
-/* Optional: Logo NICHT springen lassen */
+/* Prevent logo from jumping on hover */
 .footer a img {
   transition:
     transform 0.2s ease,

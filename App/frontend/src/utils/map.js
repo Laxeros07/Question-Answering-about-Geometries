@@ -221,7 +221,7 @@ export function exportLayerToGeoJSON(
   }
 }
 
-// Get GErmany Borders
+// Get Germany Borders
 export async function loadGermanyBorder(map) {
   const res = await fetch(`${API_BASE_URL}/api/geometries?ids=S1`);
   const data = await res.json();

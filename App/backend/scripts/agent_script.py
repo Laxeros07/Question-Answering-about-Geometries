@@ -1110,7 +1110,7 @@ def build_radius_and_direction_query(state):
     
     # Now calculate the radius query using the retrieved ID
     query = srf.calculate_radius(
-        records[0]["start"]["id"],
+        records[0]["result"]["start"]["id"],
         name, 
         state["target_type"], 
         distance, 
@@ -1553,7 +1553,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What is the distance between Bocholt and Selm?"
+    example_question = "Which cities lie northern 10km around Siegburg?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")

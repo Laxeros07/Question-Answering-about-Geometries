@@ -131,6 +131,7 @@ def compute_bert_scores(actuals: list[str], expecteds: list[str]):
     P, R, F1 = bert_score(
         actuals,
         expecteds,
+        lang="en",
         model_type="bert-base-multilingual-cased",
         rescale_with_baseline=True,
         verbose=True,
