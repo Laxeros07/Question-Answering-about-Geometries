@@ -1149,6 +1149,12 @@ def resolve_entity(state):
         if isinstance(state["result"][0], list):
             state["result"] = state["result"][0]
 
+        if state["distance_between"] == True:
+            state["result"] = [{
+                "start": state["result"][0]["start"],
+                "target": [state["result"][1]["start"]]
+            }]
+
     elif len(state["result"]) > 1:
     
         # Printable JSON
@@ -1306,6 +1312,9 @@ def resolve_entity(state):
         #     "start": state["result"][0]["start"],
         #     "target": [state["result"][1]["start"]]
         # }]
+
+        # Only use first result for the calculation
+        state["result"] = [state["result"][0]]
         state["result"] = srf.calculate_distances(state["result"])
 
     return state
@@ -1553,7 +1562,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "Which cities lie northern 10km around Siegburg?"
+    example_question = "What is the distance between Münster and Braunschweig?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
