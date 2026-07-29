@@ -863,12 +863,14 @@ def build_direction_query(state):
     records = graph.query(query)
     if not records or len(records) == 0:
         return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
+
+    state["result"] = [r["result"] for r in records]
     
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
-        records = state["result"]
+
+    records = state["result"]
 
     if state["decision_question"] == True:
         # When it is a decision question, srf.calculate_cardinal_direction() does not need to be called
@@ -955,11 +957,13 @@ def build_radius_query(state):
     if not records or len(records) == 0:
         return {**state, "cypher_query": "RETURN null AS result LIMIT 0"}
 
+    state["result"] = [r["result"] for r in records]
+
     # Run the prompt which chooses the best result if multiple candidates are returned
     if len(records) > 1:
-        state["result"] = [r["result"] for r in records]
         state = resolve_entity(state)
-        records = state["result"]
+        
+    records = state["result"]
     
     # Now calculate the radius query using the retrieved ID
     # If there are multiple candidates, choose the first one
@@ -1562,7 +1566,7 @@ def run_all(question: str, apiKey: str):
 
 
 if __name__ == "__main__":
-    example_question = "What is the distance between Münster and Braunschweig?"
+    example_question = "Which districts are located within a radius of 10 km from the district Göttingen?"
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
