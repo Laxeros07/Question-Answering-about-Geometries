@@ -8,10 +8,11 @@ router = APIRouter(prefix="/api/geometries")
 df = pd.read_csv("data/geometries.csv")
 df.set_index("ID", inplace=True)
 
+
 # ---------------------------------------------------
 # Multiple geometries by IDs
 # ---------------------------------------------------
-@router.get("/")
+@router.get("")
 def get_geometries(ids: str = Query(None)):
     """
     Example:
@@ -30,9 +31,6 @@ def get_geometries(ids: str = Query(None)):
         if geom_id in df.index:
             geom = wkt.loads(df.loc[geom_id]["Geometry"])
 
-            result.append({
-                "id": geom_id,
-                "geojson": geom.__geo_interface__
-            })
+            result.append({"id": geom_id, "geojson": geom.__geo_interface__})
 
     return {"geometries": result}

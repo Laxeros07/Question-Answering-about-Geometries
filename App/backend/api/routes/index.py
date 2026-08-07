@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/api")
 
-@router.get("/")
+
+@router.get("")
 def root():
     return {"message": "API läuft"}

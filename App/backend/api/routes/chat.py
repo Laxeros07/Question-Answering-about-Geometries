@@ -14,15 +14,15 @@ class ChatRequest(BaseModel):
     selectedModel: str
 
 
-@router.post("/")
+@router.post("")
 def chat(req: ChatRequest):
     # Starts the question-answering process and returns the result
     try:
         print(f"Request: model={req.selectedModel}, question={req.message}")
-        
+
         result = run_question(req.message, req.openAiKey, req.selectedModel)
         return {"result": result}
-        
+
     except Exception as e:
         # Print the full traceback to the terminal
         tb = traceback.format_exc()
@@ -30,14 +30,14 @@ def chat(req: ChatRequest):
         print(f"ERROR in /api/chat: {type(e).__name__}")
         print(tb)
         print("=" * 70)
-        
+
         # Return a clean JSON error so CORS middleware can add headers
         return JSONResponse(
-            status_code=500, 
+            status_code=500,
             content={
-                "error": "internal server error", 
+                "error": "internal server error",
                 "details": str(e),
                 "error_type": type(e).__name__,
                 "trace": tb,
-            }
+            },
         )
