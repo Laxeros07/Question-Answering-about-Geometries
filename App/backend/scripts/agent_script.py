@@ -1241,6 +1241,12 @@ def resolve_entity(state):
         Your task is NOT to answer the user's question.
 
         Your only task is to determine which candidate(s) correspond to the spatial entity mentioned in the question.
+        
+        IMPORTANT:
+            - Reply with ONLY a valid JSON object.
+            - Do NOT wrap it in Markdown code fences.
+            - Do NOT include any explanation before or after the JSON.
+            - The JSON must have exactly these keys: "indices" (list of integers), "reasoning" (string).
 
         The targets, geometries and relationships are NOT the answer.
         They are only context that may help identify the correct entity.

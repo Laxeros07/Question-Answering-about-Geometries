@@ -12,7 +12,7 @@ from bert_score import score as bert_score
 # Configuration
 # ============================================================
 INPUT_FILE = "Questions.xlsx"
-OUTPUT_FILE = "test_results_gpt-5.4-mini.xlsx"
+OUTPUT_FILE = "test_results_gpt-4o-mini.xlsx"
 
 # load Keys from .env
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -28,7 +28,7 @@ if not API_KEY:
 if not API_KEY_JUDGE:
     raise EnvironmentError("API_KEY_JUDGE is not set. Please define it in your .env file.")
 
-CHAT_MODEL = "gpt-5.4-mini"
+CHAT_MODEL = "gpt-4o-mini"
 JUDGE_MODEL = "gpt-5.4-nano"
 
 QUESTION_COLUMN = "Question"
@@ -214,7 +214,7 @@ def main():
         df.to_excel(OUTPUT_FILE, index=False)
 
         # Small pause to avoid overloading the API
-        time.sleep(0.5)
+        time.sleep(10)
 
 
     # BERTScore
