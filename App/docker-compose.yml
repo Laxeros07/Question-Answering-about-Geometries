@@ -2,6 +2,7 @@ services:
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     env_file:
       - ./frontend/.env
     environment:
@@ -15,6 +16,7 @@ services:
 
   backend:
     build: ./backend
+    restart: unless-stopped
     env_file:
       - ./backend/.env
 
@@ -36,6 +38,7 @@ services:
 
   neo4j:
     image: neo4j:5
+    restart: unless-stopped
     ports:
       - "7474:7474"
       - "7687:7687"
