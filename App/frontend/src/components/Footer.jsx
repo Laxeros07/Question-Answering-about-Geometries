@@ -18,7 +18,7 @@ export default function Footer() {
           <div className="col-md-6 text-center">
             <small>
               This work was funded by the German Research Foundation (DFG project
-              no. 460036893 – NFDI4Earth)
+              no. 460036893 – NFDI4Earth).
             </small>
           </div>
 
