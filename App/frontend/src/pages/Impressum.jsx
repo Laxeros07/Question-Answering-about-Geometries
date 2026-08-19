@@ -62,9 +62,9 @@ export default function Info() {
           Email:{" "}
           <a
             className="link-green"
-            href="mailto:Auriol.Degbelo@tu-dresden.de"
+            href="mailto:firstname.lastname@tu-dresden.de"
           >
-            Auriol.Degbelo@tu-dresden.de
+            firstname.lastname@tu-dresden.de
           </a>
         </div>
         <div className="col-md-4 d-flex justify-content-center align-items-start">
