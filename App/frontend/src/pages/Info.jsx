@@ -85,9 +85,9 @@ export default function Home() {
 
           <p>
             Germany's administrative structure consists of up to five levels: 
-            <strong> Federal State</strong>, <strong>Administrative District</strong>,
-            <strong> District</strong>, <strong>Administrative Community</strong> and
-            <strong> City</strong>.
+            <strong> Federal State</strong> (Bundesland), <strong>Administrative District</strong> (Regierungsbezirk),
+            <strong> District</strong> (Landkreis), <strong>Administrative Community</strong> (Verwaltungsgemeinschaft) and
+            <strong> City</strong> (Stadt).
           </p>
 
           <p>
