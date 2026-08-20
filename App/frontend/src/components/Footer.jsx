@@ -9,7 +9,7 @@ export default function Footer() {
             <ul className="list-unstyled mb-0">
               <li>
                 <Link className="text-white-50 text-decoration-none" to="/Impressum">
-                  Impressum
+                  Legal Information
                 </Link>
               </li>
             </ul>

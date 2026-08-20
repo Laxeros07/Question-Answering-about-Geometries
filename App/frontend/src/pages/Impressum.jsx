@@ -3,7 +3,7 @@ import PageTitle from "../components/PageTitle";
 export default function Info() {
   return (
   <>
-    <PageTitle title="Impressum" />
+    <PageTitle title="Legal Information" />
 
     {/* Heading Row */}
     <div className="container">
