@@ -1,3 +1,2 @@
 The architecture of the backend (LangGraph Agent) is shown below. 
-
-<img width="940" height="369" alt="image" src="https://github.com/user-attachments/assets/8cbbf0a0-9800-4119-b977-5b4371287369" />
+<img width="1904" height="746" alt="agent_graph" src="https://github.com/user-attachments/assets/7d5f7fe8-4e69-4bb2-a2c4-fbe857c02bbb" />
