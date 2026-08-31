@@ -42,7 +42,7 @@
 
 This project is a further development of [Chat with NRW](https://github.com/Felioxx/SIS-Course). It was done during the summer of 2026 at TU Dresden.
 
-An interactive Web application was implemented that includes a Chat function, which is linked to a leaflet map. The Application is knowledgeable about the administrative geometries and the federal relations of Germany. It consists of multiple components:
+An interactive Web application was implemented that includes a Chat function, which is linked to a leaflet map. The Application is knowledgeable about the administrative geometries and the federal relations of Germany. 
 
 <br />
 <div class="container">
