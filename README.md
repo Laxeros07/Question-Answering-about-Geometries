@@ -80,20 +80,20 @@ An interactive Web application was implemented that includes a Chat function, wh
 
 # Questions answered by the application
 
-## The Hierarchy of the entities:
+### Hierarchy of the entities:
 
 City < Administrative Community < District < Administrative District < Federal State < State
 
-### regarding location
+### Regarding location
 
 - Where is (_entity_name_) located?
 
-### regarding federal levels
+### Regarding federal levels
 
 - Which cities lie in the district of (_entity_name_)?
 - Which cities/districts lie in the administrative district of (_entity_name_)?
 
-### regarding relations between entities
+### Regarding relations between entities
 
 #### distances
 
@@ -232,15 +232,15 @@ City < Administrative Community < District < Administrative District < Federal S
 ### Importance of the application
 
 - Works with the “complete” geometries
-- Has knowledge about the relations
-- Visualization on map
-- Easy to use (less complex than Google Maps f.e.)
+- Has knowledge about the spatial relations between the administrative entities
+- Visualization of the spatial context of the answers on an interactive map
+- Easy to use because of its narrower scope than general-purpose applications (e.g. Google Maps, Bing Maps)
 
 ### Target users
 
 - Local government workers
 - Citizens
-- People who struggle with current Map services
+- Programmers of Geographic Information Systems and Map-based applications, looking for high and low resolution boundaries for the spatial entities
 
 ### Benefits for the users
 
