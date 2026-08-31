@@ -1,8 +1,8 @@
 # App_new
 
-Full-Stack Anwendung mit FastAPI-Backend und React-Frontend für Question-Answering über Geometrien.
+Full-stack application with a FastAPI backend and React frontend for question answering about geometries.
 
-## Voraussetzungen
+## Requirements
 
 - **Backend:** Python 3.10+, FastAPI, Uvicorn
 - **Frontend:** Node.js 18+, npm
@@ -16,7 +16,7 @@ cd App_new/backend
 pip install -r requirements.txt
 ```
 
-Falls `requirements.txt` nicht existiert:
+If `requirements.txt` does not exist:
 
 ```bash
 pip install fastapi uvicorn python-multipart pandas
@@ -29,7 +29,7 @@ cd App_new/frontend
 npm install
 ```
 
-## Starten
+## Start
 
 ### Backend (Terminal 1)
 
@@ -48,19 +48,19 @@ cd App_new/frontend
 npm start
 ```
 
-- Läuft unter: `http://localhost:3000`
+- Runs at: `http://localhost:3000`
 
 ## API-Endpoints
 
 | Endpoint               | Beschreibung               |
 | ---------------------- | -------------------------- |
-| `GET /`                | Willkommensnachricht       |
-| `GET /geometries`      | Alle Geometrien abrufen    |
-| `GET /geometries/{id}` | Einzelne Geometrie abrufen |
-| `POST /chat`           | Chat-Anfrage senden        |
+| `GET /`                | Welcome message       |
+| `GET /geometries`      | Get all geometries    |
+| `GET /geometries/{id}` | Retrieve a single geometry |
+| `POST /chat`           | Send a chat request      |
 
-## Entwicklung
+## Development
 
 - **Backend:** Hot-Reload aktiviert (`--reload`)
 - **Frontend:** Create React App mit Hot-Reload
-- **CORS:** Erlaubt `http://localhost:3000` (React)
+- **CORS:** Allows `http://localhost:3000` (React)
