@@ -106,9 +106,9 @@ City < Administrative Community < District < Administrative District < Federal S
 - Show me every city that lies western of (_city_name_)?
 - Show me every district that lies western of (_district_name_)?
 - Show me every administrative district that lies western of (_administrative_district_name_)?
-- In which direction lies (_city_name_) from (_city_name_)?
-- In which direction lies (_district_name_) from (_district_name_)?
-- In which direction lies (_administrative_district_name_) from (_administrative_district_name_)?
+- Is (_city_name_) cardinaldirection = north|west|east|south from (_city_name_)?
+- Is (_district_name_) cardinaldirection = north|west|east|south from (_district_name_)?
+- Is (_administrative_district_name_) cardinaldirection = north|west|east|south from (_administrative_district_name_)?
 
 #### neighbors
 
