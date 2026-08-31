@@ -8,7 +8,7 @@
  Ask Germany about its administrative geometries!
   <p align="center">
         <br />
-   made <a href="https://tu-dresden.de/"> @ TU - Dresden</a> 🌍
+   made <a href="https://tu-dresden.de/bu/umwelt/geo/geoinformatik"> @ TU - Dresden</a> 🌍
     <br />
     <a href="https://github.com/Laxeros07/Question-Answering-about-Geometries/tree/main/App"><strong>Explore the code »</strong></a>
   </p>
