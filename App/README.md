@@ -38,8 +38,8 @@ cd App_new/backend
 uvicorn api.main:app --reload --port 8000
 ```
 
-- Läuft unter: `http://localhost:8000`
-- API-Dokumentation: `http://localhost:8000/docs`
+- Runs at: `http://localhost:8000`
+- API-Documentation: `http://localhost:8000/docs`
 
 ### Frontend (Terminal 2)
 
