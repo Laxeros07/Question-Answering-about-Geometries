@@ -38,13 +38,11 @@
 
 <!-- ABOUT THE PROJECT -->
 
-## About The Project
+# About The Project
 
-This project is a further development of [Chat with NRW](https://github.com/Felioxx/SIS-Course). It has been done during the Summer 2026 at the TU - Dresden.
+This project is a further development of [Chat with NRW](https://github.com/Felioxx/SIS-Course). It was done during the summer of 2026 at TU Dresden.
 
-In this project a collaborative and interactive Web-Application was implemented. The App includes a Chat function which is linked to a leaflet map. It is knowledged about the administrative geometries and the federal relations of Germany.
-
-It consists of multiple components, which will be explained in the following:
+An interactive Web application was implemented that includes a Chat function, which is linked to a leaflet map. The Application is knowledgeable about the administrative geometries and the federal relations of Germany. It consists of multiple components:
 
 <br />
 <div class="container">
@@ -80,30 +78,30 @@ It consists of multiple components, which will be explained in the following:
 <br />
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Questions answered by the application
+# Questions answered by the application
 
-### The Hierarchy of the entities:
+## The Hierarchy of the entities:
 
 City < Administrative Community < District < Administrative District < Federal State < State
 
-#### regarding location
+### regarding location
 
 - Where is (_entity_name_) located?
 
-#### regarding federal levels
+### regarding federal levels
 
 - Which cities lie in the district of (_entity_name_)?
 - Which cities/districts lie in the administrative district of (_entity_name_)?
 
-#### regarding relations between entities
+### regarding relations between entities
 
-##### distances
+#### distances
 
 - What is the distance between (_city_name_) and (_city_name_)?
 - What is the distance between (_district_name_) and (_district_name_)?
 - What is the distance between (_administrative_district_name_) and (_administrative_district_name_)?
 
-##### cardinal directions
+#### cardinal directions
 
 - Show me every city that lies western of (_city_name_)?
 - Show me every district that lies western of (_district_name_)?
@@ -112,13 +110,13 @@ City < Administrative Community < District < Administrative District < Federal S
 - In which direction lies (_district_name_) from (_district_name_)?
 - In which direction lies (_administrative_district_name_) from (_administrative_district_name_)?
 
-##### neighbors
+#### neighbors
 
 - Show me all neighbors of (_entity_name_)?
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 <br />
 
-### Built With
+## Built With
 
 - [![JavaScript][JavaScript.com]][JavaScript-url]
 - [![React][React.js]][React-url]
@@ -135,15 +133,15 @@ City < Administrative Community < District < Administrative District < Federal S
 
 <!-- GETTING STARTED -->
 
-## Getting Started
+# Getting Started
 
-### Local environment
+## Local environment
 
-#### Requirements:
+### Requirements:
 
 - Install the [Neo4j Commmunity Edition](https://neo4j.com/product/community-edition/)
 
-#### Installation:
+### Installation:
 
 1. Clone the repo
    ```sh
@@ -205,13 +203,13 @@ City < Administrative Community < District < Administrative District < Federal S
 
 - runs on: `http://localhost:3000`
 
-### Docker
+## Docker
 
-#### Requirements:
+### Requirements:
 
 - Install [Docker](https://docs.docker.com/engine/install/)
 
-#### Installation:
+### Installation:
 
 1. Clone the repo
    ```sh
@@ -229,24 +227,24 @@ City < Administrative Community < District < Administrative District < Federal S
 
 <!-- USAGE EXAMPLES -->
 
-## Usage goals
+# Usage goals
 
-#### Importance of the application
+### Importance of the application
 
 - Works with the “complete” geometries
 - Has knowledge about the relations
 - Visualization on map
 - Easy to use (less complex than Google Maps f.e.)
 
-#### Target users
+### Target users
 
 - Local government workers
 - Citizens
 - People who struggle with current Map services
 
-#### Benefits for the users
+### Benefits for the users
 
-- Easy useage
+- Easy usage
 - Precise visualization
 - Correct distances
 - Explanation of the federal system
@@ -255,7 +253,7 @@ City < Administrative Community < District < Administrative District < Federal S
 
 <!-- LICENSE -->
 
-## License
+# License
 
 Copyright (c) 2027
 
@@ -265,7 +263,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 <!-- CONTACT -->
 
-## Contact
+# Contact
 
 Auriol Degbelo - auriol.degbelo@tu-dresden.de
 
@@ -274,8 +272,6 @@ Eva Langstein - elangste@uni-muenster.de
 Anne Staskiewicz - anne.staskiewicz@uni-muenster.de
 
 Felix Disselkamp - fdisselk@uni-muenster.de
-
-##### Project Link: https://github.com/Laxeros07/Question-Answering-about-Geometries
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 <!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
