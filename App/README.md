@@ -61,6 +61,6 @@ npm start
 
 ## Development
 
-- **Backend:** Hot-Reload aktiviert (`--reload`)
-- **Frontend:** Create React App mit Hot-Reload
+- **Backend:** Hot-Reload activated (`--reload`)
+- **Frontend:** Create React App with Hot-Reload
 - **CORS:** Allows `http://localhost:3000` (React)
