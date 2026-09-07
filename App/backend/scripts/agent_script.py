@@ -1564,6 +1564,7 @@ def run_question(question: str, apiKey: str, selectedModel: str):
         "apiKey": apiKey, 
         "selectedModel": selectedModel
     }
+
     return compiled_graph.invoke(inputs)
 
 
@@ -1576,7 +1577,18 @@ if __name__ == "__main__":
     example_api_key = os.getenv("OPENAI_API_KEY")
     if example_api_key:
         result = run_question(example_question, example_api_key, "gpt-5.4-nano")
-
-        fancy_print(result)
+        
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    
+        logs = {
+            "time": timestamp,
+            "question": result.get("question"),
+            "selectedModel": result.get("selectedModel"),
+            "parameters_extracted": result,
+            "agqa_answer": result.get("result", {}).get("verbalized")
+        }
+    
+        print(logs)
+        # fancy_print(result)
     else:
         print("Please set OPENAI_API_KEY before running the script directly.")
