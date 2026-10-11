@@ -289,7 +289,7 @@ If you reuse the data and software, please cite:
 @inproceedings{disselkamp2026AGQA,
 	address = {Riverside, California, USA},
 	title = {AGQA: Administrative Geometry Question Answering},
-	booktitle = {GeoSearch'26: 5th ACM SIGSPATIAL International Workshop on Searching and Mining Large Collections of Geospatial Data}},
+	booktitle = {GeoSearch'26: 5th ACM SIGSPATIAL International Workshop on Searching and Mining Large Collections of Geospatial Data},
 	author = {Disselkamp, Felix and Langstein, Eva and Staskiewicz, Anne and Klammer, Ralf and Degbelo, Auriol},
 	year = {2026},
 }
