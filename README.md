@@ -33,6 +33,7 @@
     <li><a href="#usage-goals">Usage goals</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
+    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
 
@@ -274,6 +275,28 @@ Anne Staskiewicz - anne.staskiewicz@uni-muenster.de
 Felix Disselkamp - fdisselk@uni-muenster.de
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+
+# Acknowledgments
+
+The work has been funded by the German Research Foundation through the Project [NFDI4Earth](https://www.nfdi4earth.de/). 
+
+If you reuse the data and software, please cite:
+
+```bash
+
+@inproceedings{disselkamp2026AGQA,
+	address = {Riverside, California, USA},
+	title = {AGQA: Administrative Geometry Question Answering},
+	booktitle = {GeoSearch'26: 5th ACM SIGSPATIAL International Workshop on Searching and Mining Large Collections of Geospatial Data}},
+	author = {Disselkamp, Felix and Langstein, Eva and Staskiewicz, Anne and Klammer, Ralf and Degbelo, Auriol},
+	year = {2026},
+}
+```
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
 <!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
 
 <!-- MARKDOWN LINKS & IMAGES -->
