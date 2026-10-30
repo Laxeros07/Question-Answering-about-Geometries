@@ -15,9 +15,9 @@ export default function useChat(
         <>
           Hello there! Ask me some questions about the geometries of
           administrative entities in Germany. If you are not familiar with the
-          federal system of Germany, we recommend to read the short introduction
+          federal system of Germany, we recommend reading the short introduction
           on our <Link to="/Info">Infopage</Link>, where you can also find some
-          sample questions.
+          sample questions. A demo of the questions I currently support can be found <Link to="https://youtu.be/jynExzCXliw">here</Link>.
         </>
       ),
       side: "left",
